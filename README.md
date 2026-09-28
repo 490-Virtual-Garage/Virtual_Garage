@@ -55,7 +55,15 @@ The client is a separate temporary container. On a named Docker network, `virtua
 
 Expected result: the client reports that it connected to `virtual-garage-emulator:35000`, then prints raw and decoded RPM, speed, and coolant-temperature responses. The default emulator scenario normally has no stored DTCs, so an empty DTC response is expected.
 
-### 5. Exiting the container
+### 5. Run Commands against the Emulator
+
+```bash
+python elm_client.py --host virtual-garage-emulator --port 35000 010C
+python elm_client.py --host virtual-garage-emulator --port 35000 010D
+python elm_client.py --host virtual-garage-emulator --port 35000 03
+```
+
+### 6. Exiting the container
 
 ```bash
 exit
