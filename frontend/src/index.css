@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
-.homeContainer {
-  display: flex;
+body {
+  /*background: linear-gradient(rgb(37, 35, 35), rgb(81, 77, 77), rgb(37, 35, 35));*/
+  height: auto;
 }

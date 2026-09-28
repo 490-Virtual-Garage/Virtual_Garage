@@ -3,9 +3,9 @@ import '../App.css'
 
 function Header() {
   return (
-    <>
-        <p>Howdy</p>
-    </>
+    <header class="header">
+        <h1>Virtual Garage</h1>
+    </header>
   )
 }
 
