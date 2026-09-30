@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+.header {
+  background: linear-gradient(rgb(37, 35, 35), rgb(81, 77, 77), rgb(37, 35, 35));
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: center;
+  border: solid;
+}
+
+.footer {
+  background: linear-gradient(rgb(37, 35, 35), rgb(81, 77, 77), rgb(37, 35, 35));
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: center;
+  border: solid;
+}
