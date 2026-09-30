@@ -4,26 +4,31 @@
 Start the emulator first, for example:
     python3 -m elm -s car -n 35000
 
-Then run this script:
+Then open the interactive menu:
     python3 elm_client.py
+
+Or send specific commands and exit:
+    python3 elm_client.py 010C 03
+
+The emulator address comes from ELM_HOST and ELM_PORT, or from --host and --port.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import socket
 import time
 from typing import Optional
 
 
-DEFAULT_COMMANDS = [
-    "ATI",   # Adapter identification
-    "010C",  # Engine RPM
-    "010D",  # Vehicle speed
-    "0105",  # Coolant temperature
-    "03",    # Stored diagnostic trouble codes (DTCs)
-]
+MENU = {
+    "1": ("Engine RPM", "010C"),
+    "2": ("Vehicle speed", "010D"),
+    "3": ("Coolant temperature", "0105"),
+    "4": ("Stored trouble codes (DTCs)", "03"),
+}
 
 
 def send_command(sock: socket.socket, command: str, timeout: float) -> str:
@@ -38,7 +43,7 @@ def send_command(sock: socket.socket, command: str, timeout: float) -> str:
             break
         reply.extend(chunk)
 
-    return reply.decode("ascii", errors="replace").replace("\r", "\n").strip()
+    return reply.decode("ascii", errors="replace").replace("\r", "\n").replace(">", "").strip()
 
 
 def response_bytes(reply: str) -> list[int]:
@@ -86,33 +91,70 @@ def connect_with_retries(host: str, port: int, timeout: float, retries: int) -> 
     ) from last_error
 
 
+def run_command(sock: socket.socket, command: str, timeout: float) -> None:
+    reply = send_command(sock, command, timeout)
+    print(f"> {command}")
+    print(reply or "(no reply)")
+    decoded = explain(command, reply)
+    if decoded:
+        print(decoded)
+    print()
+
+
+def run_menu(sock: socket.socket, timeout: float) -> None:
+    while True:
+        for key, (label, command) in MENU.items():
+            print(f"  {key}) {label} [{command}]")
+        print("  q) Quit")
+
+        try:
+            choice = input("Choose: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if choice == "q":
+            return
+        if choice not in MENU:
+            print(f"Unknown choice: {choice!r}\n")
+            continue
+
+        print()
+        run_command(sock, MENU[choice][1], timeout)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Query an ELM327 emulator over TCP.")
-    parser.add_argument("--host", default="127.0.0.1", help="Emulator host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=35000, help="Emulator TCP port (default: 35000)")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("ELM_HOST", "127.0.0.1"),
+        help="Emulator host (default: $ELM_HOST or 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("ELM_PORT", "35000")),
+        help="Emulator TCP port (default: $ELM_PORT or 35000)",
+    )
     parser.add_argument("--timeout", type=float, default=2.0, help="Seconds to wait for each reply")
     parser.add_argument("--retries", type=int, default=1, help="Connection attempts before giving up")
     parser.add_argument(
         "commands",
         nargs="*",
-        help="Optional ELM/OBD commands, e.g. 010C 03. Defaults to a small live-data demo.",
+        help="Optional ELM/OBD commands, e.g. 010C 03. Without commands, opens the interactive menu.",
     )
     args = parser.parse_args()
-
-    commands = args.commands or DEFAULT_COMMANDS
 
     try:
         with connect_with_retries(args.host, args.port, args.timeout, args.retries) as sock:
             print(f"Connected to ELM327 emulator at {args.host}:{args.port}\n")
+            send_command(sock, "ATE0", args.timeout)
 
-            for command in commands:
-                reply = send_command(sock, command, args.timeout)
-                print(f"> {command}")
-                print(reply or "(no reply)")
-                decoded = explain(command, reply)
-                if decoded:
-                    print(decoded)
-                print()
+            if args.commands:
+                for command in args.commands:
+                    run_command(sock, command, args.timeout)
+            else:
+                run_menu(sock, args.timeout)
     except ConnectionError:
         raise SystemExit(
             f"Could not connect to {args.host}:{args.port}. "

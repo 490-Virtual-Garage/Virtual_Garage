@@ -1,16 +1,16 @@
 # Virtual Garage - Scanner Environment
 
-This is the team's first reproducible development environment for the Virtual Garage scanner feature. It starts a simulated ELM327/OBD-II adapter and a small Python client that asks it for RPM, speed, coolant temperature, and stored DTCs.
+This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website and runs the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
 
-It is intentionally a scanner proof of concept, not the finished application. It does not yet include the web/mobile interface, user accounts, vehicle history database, real Bluetooth pairing, or AWS deployment.
+It is intentionally a scanner proof of concept, not the finished application. The website loads and then shows an empty page. It does not yet query the scanner. The project also does not yet include user accounts, a vehicle history database, real Bluetooth pairing, or AWS deployment.
 
 ## Prerequisite
 
-Install and open Docker Desktop. Teammates do not need to install Python or the ELM327 emulator directly.
+Install and open Docker Desktop. Teammates do not need to install Python, Node, or the ELM327 emulator directly.
 
 ## Build and run it
 
-Run these commands from the repository root. They deliberately use Docker's lower-level commands so the team can see what Compose normally does for us.
+
 
 ### 1. Build the image
 
@@ -18,7 +18,7 @@ Run these commands from the repository root. They deliberately use Docker's lowe
 docker build -t virtual-garage-elm:dev .
 ```
 
-This reads the `Dockerfile` and creates a reusable local image named `virtual-garage-elm:dev`. The final `.` means "use this folder as the build context."
+This reads the `Dockerfile` and creates a reusable local image named `virtual-garage-elm:dev`. The final `.` means "use this folder as the build context." The image contains Python for the scanner and Node for the website.
 
 ### 2. Create the containers' private network
 
@@ -34,44 +34,79 @@ Run this once per computer. If Docker says the network already exists, that is f
 docker run --detach --interactive --tty \
   --name virtual-garage-emulator \
   --network virtual-garage-net \
-  -p 127.0.0.1:35000:35000 \
+  -p 35000:35000 \
   virtual-garage-elm:dev \
   python3 -m elm -s car -n 35000 -i 0.0.0.0
 ```
 
-This starts the simulated OBD-II adapter in the background. `--network` puts it on the private Docker network, and `-p 127.0.0.1:35000:35000` optionally makes its port reachable only from the developer's own computer—not the public internet.
+This starts the simulated OBD-II adapter in the background. `--network` puts it on the private Docker network, and `-p 127.0.0.1:35000:35000` makes its port reachable only from the developer's own computer.
 
-### 4. Run the client against the emulator
+### 4. Run the website
+
+This is the second container. It serves the React app and is also where you run the Python client. It joins the same network, so the emulator's name resolves. The repository is mounted at `/app` so edits show up without a rebuild. The second mount keeps the frontend dependencies from the image, because the repository mount would otherwise hide them.
 
 ```bash
-docker run --rm -it \
+docker run --detach \
+  --name virtual-garage-web \
   --network virtual-garage-net \
+  -p 127.0.0.1:5173:5173 \
   --mount type=bind,src="$PWD",dst=/app \
-  --workdir /app \
-  virtual-garage-elm:dev sh
+  --mount type=volume,src=virtual-garage-frontend-modules,dst=/app/frontend/node_modules \
+  -e ELM_HOST=virtual-garage-emulator \
+  -e ELM_PORT=35000 \
+  --workdir /app/frontend \
+  virtual-garage-elm:dev \
+  npm run dev -- --host 0.0.0.0
 ```
 
-The client is a separate temporary container. On a named Docker network, `virtual-garage-emulator` resolves to the emulator container, so do not use `localhost` here.
+The container's main job is the website, so it stays running in the background. You get a shell inside it in step 5. `--host 0.0.0.0` lets your browser reach Vite from outside the container.
 
-Expected result: the client reports that it connected to `virtual-garage-emulator:35000`, then prints raw and decoded RPM, speed, and coolant-temperature responses. The default emulator scenario normally has no stored DTCs, so an empty DTC response is expected.
+`ELM_HOST` and `ELM_PORT` tell the Python client where the emulator is, so you don't pass them on every command.
 
-### 5. Run Commands against the Emulator
+Open [http://localhost:5173](http://localhost:5173).
+
+Expected result: the browser tab title is "Virtual Garage", and the page body is empty because `frontend/src/App.jsx` does not render any content yet. To confirm the server started:
 
 ```bash
-python elm_client.py --host virtual-garage-emulator --port 35000 010C
-python elm_client.py --host virtual-garage-emulator --port 35000 010D
-python elm_client.py --host virtual-garage-emulator --port 35000 03
+docker logs virtual-garage-web
 ```
 
-### 6. Exiting the container
+
+
+### 5. Open a shell in the website container
 
 ```bash
-exit
+docker exec -it -w /app virtual-garage-web sh
 ```
+
+Your prompt changes to `#`. You are now inside the container, in the repository folder. Run the client from there:
+
+```bash
+python3 elm_client.py
+```
+
+This opens one connection to the emulator and shows a menu:
+
+```text
+Connected to ELM327 emulator at virtual-garage-emulator:35000
+
+  1) Engine RPM [010C]
+  2) Vehicle speed [010D]
+  3) Coolant temperature [0105]
+  4) Stored trouble codes (DTCs) [03]
+  q) Quit
+Choose:
+```
+
+Type a number and press Enter to see the raw reply and the decoded value. The connection stays open until you choose `q`, which returns you to the container's shell. Run `python3 elm_client.py` again as often as you like.
+
+The default emulator scenario normally has no stored DTCs, so option 4 replies `43 00`.
+
+To leave the container, type `exit`. The website keeps running, because `exit` only closes this shell.
 
 ## Re-run and clean up
 
-To run the client again, repeat step 4. To see the emulator's output:
+To see the emulator's output:
 
 ```bash
 docker logs virtual-garage-emulator
@@ -80,22 +115,25 @@ docker logs virtual-garage-emulator
 When you are finished:
 
 ```bash
-docker stop virtual-garage-emulator
-docker rm virtual-garage-emulator
+docker stop virtual-garage-emulator virtual-garage-web
+docker rm virtual-garage-emulator virtual-garage-web
 docker network rm virtual-garage-net
+```
+
+If `frontend/package.json` changes, rebuild the image, remove the dependency volume, and start the website container again:
+
+```bash
+docker volume rm virtual-garage-frontend-modules
 ```
 
 
 
 ## Run another query
 
-Ask for only RPM, speed, and stored DTCs:
+To skip the menu, pass commands directly from the container's shell. The client sends them, prints the replies, and exits:
 
 ```bash
-docker run --rm \
-  --network virtual-garage-net \
-  virtual-garage-elm:dev \
-  python3 elm_client.py --host virtual-garage-emulator --port 35000 010C 010D 03
+python3 elm_client.py 010C 010D 03
 ```
 
 The emulator is for development/testing. It is configured with its built-in `car` scenario and is not connected to a real vehicle.
@@ -104,10 +142,10 @@ The emulator is for development/testing. It is configured with its built-in `car
 
 1. Clone the shared GitHub repository.
 2. From the repository root, complete **Build and run it** above.
-3. If the commands work, everyone has the same scanner test environment.
+3. If the commands work, everyone has the same scanner and website development environment.
 4. Do not commit `.env` files, AWS credentials, or SSH/private-key files.
 
-`compose.yaml` remains in the repository as a future convenience option, but the team's onboarding instructions use the explicit commands above.
+The team's onboarding instructions use the explicit commands above.
 
 ## Third-party development tool
 
