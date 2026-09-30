@@ -2,15 +2,11 @@
 
 This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website and runs the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
 
-It is intentionally a scanner proof of concept, not the finished application. The website loads and then shows an empty page. It does not yet query the scanner. The project also does not yet include user accounts, a vehicle history database, real Bluetooth pairing, or AWS deployment.
-
 ## Prerequisite
 
 Install and open Docker Desktop. Teammates do not need to install Python, Node, or the ELM327 emulator directly.
 
 ## Build and run it
-
-
 
 ### 1. Build the image
 
@@ -64,8 +60,6 @@ The container's main job is the website, so it stays running in the background. 
 `ELM_HOST` and `ELM_PORT` tell the Python client where the emulator is, so you don't pass them on every command.
 
 Open [http://localhost:5173](http://localhost:5173).
-
-Expected result: the browser tab title is "Virtual Garage", and the page body is empty because `frontend/src/App.jsx` does not render any content yet. To confirm the server started:
 
 ```bash
 docker logs virtual-garage-web
@@ -126,27 +120,3 @@ If `frontend/package.json` changes, rebuild the image, remove the dependency vol
 docker volume rm virtual-garage-frontend-modules
 ```
 
-
-
-## Run another query
-
-To skip the menu, pass commands directly from the container's shell. The client sends them, prints the replies, and exits:
-
-```bash
-python3 elm_client.py 010C 010D 03
-```
-
-The emulator is for development/testing. It is configured with its built-in `car` scenario and is not connected to a real vehicle.
-
-## Team workflow
-
-1. Clone the shared GitHub repository.
-2. From the repository root, complete **Build and run it** above.
-3. If the commands work, everyone has the same scanner and website development environment.
-4. Do not commit `.env` files, AWS credentials, or SSH/private-key files.
-
-The team's onboarding instructions use the explicit commands above.
-
-## Third-party development tool
-
-This environment uses the [ELM327-emulator](https://github.com/Ircama/ELM327-emulator) for development and testing only. It is licensed under CC BY-NC-SA 4.0; keep the attribution and do not copy its code into the Virtual Garage application without reviewing the license.
