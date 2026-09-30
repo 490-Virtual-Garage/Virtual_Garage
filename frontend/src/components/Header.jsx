@@ -3,8 +3,8 @@ import '../App.css'
 
 function Header() {
   return (
-    <header class="header">
-        <h1>Virtual Garage</h1>
+    <header className="header">
+        <h1 className="text-white">Virtual Garage</h1>
     </header>
   )
 }

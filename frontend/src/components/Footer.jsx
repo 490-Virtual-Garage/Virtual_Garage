@@ -2,8 +2,8 @@ import '../App.css'
 
 function Footer() {
   return (
-    <footer class="footer">
-        <p>Repo</p>
+    <footer className="footer">
+        <p className="text-white">Repo</p>
     </footer>
   )
 }
