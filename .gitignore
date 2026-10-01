@@ -8,3 +8,4 @@ venv/
 *.pem
 .DS_Storedata/
 data/
+.DS_Store
