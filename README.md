@@ -65,8 +65,6 @@ Open [http://localhost:5173](http://localhost:5173).
 docker logs virtual-garage-web
 ```
 
-
-
 ### 5. Open a shell in the website container
 
 ```bash
@@ -118,5 +116,107 @@ If `frontend/package.json` changes, rebuild the image, remove the dependency vol
 
 ```bash
 docker volume rm virtual-garage-frontend-modules
+```
+
+## Recalls service
+
+The scanner tells you what is wrong with a car right now. The recalls service answers a different question: whether the manufacturer has already issued a safety campaign for that vehicle. It runs as its own container and reads the free NHTSA recalls API, so it needs no key and no account.
+
+It is a separate container from the website because it is a separate concern, and because a failure in one should not take down the other.
+
+### Files
+
+| File | Purpose |
+| --- | --- |
+| `nhtsa_recalls.py` | Client for the NHTSA API. Handles retries, caching, and date parsing. |
+| `recalls_service.py` | FastAPI wrapper that exposes the client over HTTP. |
+| `Dockerfile.recalls` | Builds the service image. |
+
+### 1. Build the image
+
+```bash
+docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
+```
+
+The `-f` flag is needed because this is the second Dockerfile in the repository. Without it, Docker would use the one named `Dockerfile`, which builds the scanner environment instead.
+
+### 2. Run the container
+
+```bash
+docker run --detach \
+  --name virtual-garage-recalls \
+  --network virtual-garage-net \
+  -p 127.0.0.1:8000:8000 \
+  virtual-garage-recalls:dev
+```
+
+It joins `virtual-garage-net`, the same network the emulator and website use, so the other containers can reach it by name at `http://virtual-garage-recalls:8000`. Publishing to `127.0.0.1` keeps it reachable from your own computer but not from anyone else on your network.
+
+### 3. Check that it works
+
+```bash
+curl "http://localhost:8000/recalls?make=acura&model=rdx&year=2012"
+```
+
+You should get a JSON object back listing the recall campaigns for that vehicle.
+
+For a friendlier view, open [http://localhost:8000/docs](http://localhost:8000/docs). FastAPI generates an interactive page where you can fill in the parameters and send the request from the browser.
+
+### Endpoints
+
+| Method | Path | Parameters | Returns |
+| --- | --- | --- | --- |
+| GET | `/health` | none | `{"status": "ok"}` |
+| GET | `/recalls` | `make`, `model`, `year` | Recall campaigns for the vehicle |
+
+### Reading the response
+
+The `status` field matters more than the recall count, because NHTSA returns an empty result both for a vehicle with a clean record and for a make or model it does not recognize. The service tells these apart by checking NHTSA's own vehicle catalog before reporting an empty result.
+
+| `status` | Meaning |
+| --- | --- |
+| `ok` | Recalls were found. |
+| `no_recalls` | The vehicle is real and has no open recalls. |
+| `unknown_vehicle` | NHTSA has no catalog entry for that make, model, and year. Usually a spelling mistake. |
+| `error` | The request to NHTSA failed. |
+
+Two fields deserve to be shown prominently in the interface rather than listed alongside the others. `park_it` means NHTSA is advising owners not to drive the vehicle, and `park_outside` means it should not be parked indoors because of a fire risk. The `is_urgent` field is true when either applies.
+
+### Calling it from the website
+
+The React app runs in the browser, so requests go through your own computer rather than the Docker network:
+
+```js
+const res = await fetch(
+  `http://localhost:8000/recalls?make=${make}&model=${model}&year=${year}`
+);
+const data = await res.json();
+```
+
+The service allows requests from `http://localhost:5173` so the development server can call it directly.
+
+### After changing the code
+
+This container has no bind mount, so edits to `nhtsa_recalls.py` or `recalls_service.py` do not appear until the image is rebuilt and the container replaced:
+
+```bash
+docker rm -f virtual-garage-recalls
+docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
+docker run --detach \
+  --name virtual-garage-recalls \
+  --network virtual-garage-net \
+  -p 127.0.0.1:8000:8000 \
+  virtual-garage-recalls:dev
+```
+
+### Troubleshooting
+
+If `curl` reports that it could not connect, the container is not running. `docker ps -a` shows stopped containers as well as running ones, and `docker logs virtual-garage-recalls` shows why it stopped.
+
+### Cleaning up
+
+```bash
+docker stop virtual-garage-recalls
+docker rm virtual-garage-recalls
 ```
 
