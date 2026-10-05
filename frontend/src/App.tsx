@@ -1,10 +1,9 @@
-import './App.css'
 import { Routes, Route } from 'react-router-dom'
-import Dashboard from './pages/Dashboard.jsx'
-import Landing from './pages/Landing.jsx'
-import Register from './pages/Register.jsx'
-import Login from './pages/Login.jsx'
-import History from './pages/History.jsx'
+import Dashboard from './pages/Dashboard'
+import Landing from './pages/Landing'
+import Register from './pages/Register'
+import Login from './pages/Login'
+import History from './pages/History'
 
 function App() {
   return (

@@ -21,6 +21,12 @@
   align-items: start;
   justify-content: center;
   border: solid;
+  height: auto;
+  h1 {
+    font-size: 2rem;
+    color: white;
+    text-align: center;
+  }
 }
 
 .footer {
@@ -30,4 +36,9 @@
   align-items: end;
   justify-content: center;
   border: solid;
+  a {
+    font-size: 1.5rem;
+    color: white;
+    text-decoration: none;
+  }
 }
