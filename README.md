@@ -2,15 +2,11 @@
 
 This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website and runs the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
 
-It is intentionally a scanner proof of concept, not the finished application. The website loads and then shows an empty page. It does not yet query the scanner. The project also does not yet include user accounts, a vehicle history database, real Bluetooth pairing, or AWS deployment.
-
 ## Prerequisite
 
 Install and open Docker Desktop. Teammates do not need to install Python, Node, or the ELM327 emulator directly.
 
 ## Build and run it
-
-
 
 ### 1. Build the image
 
@@ -65,13 +61,9 @@ The container's main job is the website, so it stays running in the background. 
 
 Open [http://localhost:5173](http://localhost:5173).
 
-Expected result: the browser tab title is "Virtual Garage", and the page body is empty because `frontend/src/App.jsx` does not render any content yet. To confirm the server started:
-
 ```bash
 docker logs virtual-garage-web
 ```
-
-
 
 ### 5. Open a shell in the website container
 
@@ -126,27 +118,105 @@ If `frontend/package.json` changes, rebuild the image, remove the dependency vol
 docker volume rm virtual-garage-frontend-modules
 ```
 
+## Recalls service
 
+The scanner tells you what is wrong with a car right now. The recalls service answers a different question: whether the manufacturer has already issued a safety campaign for that vehicle. It runs as its own container and reads the free NHTSA recalls API, so it needs no key and no account.
 
-## Run another query
+It is a separate container from the website because it is a separate concern, and because a failure in one should not take down the other.
 
-To skip the menu, pass commands directly from the container's shell. The client sends them, prints the replies, and exits:
+### Files
+
+| File | Purpose |
+| --- | --- |
+| `nhtsa_recalls.py` | Client for the NHTSA API. Handles retries, caching, and date parsing. |
+| `recalls_service.py` | FastAPI wrapper that exposes the client over HTTP. |
+| `Dockerfile.recalls` | Builds the service image. |
+
+### 1. Build the image
 
 ```bash
-python3 elm_client.py 010C 010D 03
+docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
 ```
 
-The emulator is for development/testing. It is configured with its built-in `car` scenario and is not connected to a real vehicle.
+The `-f` flag is needed because this is the second Dockerfile in the repository. Without it, Docker would use the one named `Dockerfile`, which builds the scanner environment instead.
 
-## Team workflow
+### 2. Run the container
 
-1. Clone the shared GitHub repository.
-2. From the repository root, complete **Build and run it** above.
-3. If the commands work, everyone has the same scanner and website development environment.
-4. Do not commit `.env` files, AWS credentials, or SSH/private-key files.
+```bash
+docker run --detach \
+  --name virtual-garage-recalls \
+  --network virtual-garage-net \
+  -p 127.0.0.1:8000:8000 \
+  virtual-garage-recalls:dev
+```
 
-The team's onboarding instructions use the explicit commands above.
+It joins `virtual-garage-net`, the same network the emulator and website use, so the other containers can reach it by name at `http://virtual-garage-recalls:8000`. Publishing to `127.0.0.1` keeps it reachable from your own computer but not from anyone else on your network.
 
-## Third-party development tool
+### 3. Check that it works
 
-This environment uses the [ELM327-emulator](https://github.com/Ircama/ELM327-emulator) for development and testing only. It is licensed under CC BY-NC-SA 4.0; keep the attribution and do not copy its code into the Virtual Garage application without reviewing the license.
+```bash
+curl "http://localhost:8000/recalls?make=acura&model=rdx&year=2012"
+```
+
+You should get a JSON object back listing the recall campaigns for that vehicle.
+
+For a friendlier view, open [http://localhost:8000/docs](http://localhost:8000/docs). FastAPI generates an interactive page where you can fill in the parameters and send the request from the browser.
+
+### Endpoints
+
+| Method | Path | Parameters | Returns |
+| --- | --- | --- | --- |
+| GET | `/health` | none | `{"status": "ok"}` |
+| GET | `/recalls` | `make`, `model`, `year` | Recall campaigns for the vehicle |
+
+### Reading the response
+
+The `status` field matters more than the recall count, because NHTSA returns an empty result both for a vehicle with a clean record and for a make or model it does not recognize. The service tells these apart by checking NHTSA's own vehicle catalog before reporting an empty result.
+
+| `status` | Meaning |
+| --- | --- |
+| `ok` | Recalls were found. |
+| `no_recalls` | The vehicle is real and has no open recalls. |
+| `unknown_vehicle` | NHTSA has no catalog entry for that make, model, and year. Usually a spelling mistake. |
+| `error` | The request to NHTSA failed. |
+
+Two fields deserve to be shown prominently in the interface rather than listed alongside the others. `park_it` means NHTSA is advising owners not to drive the vehicle, and `park_outside` means it should not be parked indoors because of a fire risk. The `is_urgent` field is true when either applies.
+
+### Calling it from the website
+
+The React app runs in the browser, so requests go through your own computer rather than the Docker network:
+
+```js
+const res = await fetch(
+  `http://localhost:8000/recalls?make=${make}&model=${model}&year=${year}`
+);
+const data = await res.json();
+```
+
+The service allows requests from `http://localhost:5173` so the development server can call it directly.
+
+### After changing the code
+
+This container has no bind mount, so edits to `nhtsa_recalls.py` or `recalls_service.py` do not appear until the image is rebuilt and the container replaced:
+
+```bash
+docker rm -f virtual-garage-recalls
+docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
+docker run --detach \
+  --name virtual-garage-recalls \
+  --network virtual-garage-net \
+  -p 127.0.0.1:8000:8000 \
+  virtual-garage-recalls:dev
+```
+
+### Troubleshooting
+
+If `curl` reports that it could not connect, the container is not running. `docker ps -a` shows stopped containers as well as running ones, and `docker logs virtual-garage-recalls` shows why it stopped.
+
+### Cleaning up
+
+```bash
+docker stop virtual-garage-recalls
+docker rm virtual-garage-recalls
+```
+
