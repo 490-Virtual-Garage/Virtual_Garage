@@ -6,5 +6,5 @@ venv/
 .env.*
 !.env.example
 *.pem
-.DS_Storedata/
+.DS_Store
 data/
