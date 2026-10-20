@@ -1,3 +1,5 @@
+### This branch will be merged with the backend in the future, for now it's only for testing out fastAPI integration/features and creating a full data pipeline. 
+
 # Virtual Garage - Scanner Environment
 
 This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website and runs the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
