@@ -1,0 +1,73 @@
+{
+  "conditions": {
+    "idle":      {"pid": "RPM",         "check": "below", "value": 1000},
+    "high_rpm":  {"pid": "RPM",         "check": "above", "value": 2000},
+    "high_load": {"pid": "ENGINE_LOAD", "check": "above", "value": 60}
+  },
+
+  "nodes": {
+    "P0171": {
+      "type": "dtc",
+      "description": "System too lean, bank 1"
+    },
+    "vacuum_leak": {
+      "type": "cause",
+      "name": "Vacuum leak",
+      "repair_tier": "minor"
+    },
+    "maf_sensor": {
+      "type": "cause",
+      "name": "Dirty or failing MAF sensor",
+      "repair_tier": "minor"
+    },
+    "fuel_delivery": {
+      "type": "cause",
+      "name": "Weak fuel pump or clogged fuel filter",
+      "repair_tier": "moderate"
+    }
+  },
+
+  "edges": [
+    {"from": "vacuum_leak",   "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.4},
+    {"from": "maf_sensor",    "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.35},
+    {"from": "fuel_delivery", "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.25}
+  ],
+
+  "rules": [
+    {
+      "id": "lean_at_idle_only",
+      "explain": "Lean at idle but fine at higher RPM: extra unmetered air matters most when airflow is low",
+      "if": [
+        {"pid": "LONG_FUEL_TRIM_1", "during": "idle",     "check": "above", "value": 10},
+        {"pid": "LONG_FUEL_TRIM_1", "during": "high_rpm", "check": "below", "value": 5}
+      ],
+      "then": {"cause": "vacuum_leak", "effect": "supports", "weight": 2}
+    },
+    {
+      "id": "lean_everywhere",
+      "explain": "Lean at both idle and higher RPM: the engine is underestimating airflow across the range",
+      "if": [
+        {"pid": "LONG_FUEL_TRIM_1", "during": "idle",     "check": "above", "value": 10},
+        {"pid": "LONG_FUEL_TRIM_1", "during": "high_rpm", "check": "above", "value": 10}
+      ],
+      "then": {"cause": "maf_sensor", "effect": "supports", "weight": 2}
+    },
+    {
+      "id": "lean_everywhere_not_vacuum",
+      "explain": "A vacuum leak usually fades at higher RPM, so staying lean there argues against it",
+      "if": [
+        {"pid": "LONG_FUEL_TRIM_1", "during": "high_rpm", "check": "above", "value": 10}
+      ],
+      "then": {"cause": "vacuum_leak", "effect": "refutes", "weight": 1}
+    },
+    {
+      "id": "lean_under_load",
+      "explain": "Fine at idle but lean under heavy load: fuel supply can't keep up with demand",
+      "if": [
+        {"pid": "LONG_FUEL_TRIM_1", "during": "idle",      "check": "below", "value": 5},
+        {"pid": "LONG_FUEL_TRIM_1", "during": "high_load", "check": "above", "value": 10}
+      ],
+      "then": {"cause": "fuel_delivery", "effect": "supports", "weight": 2}
+    }
+  ]
+}
