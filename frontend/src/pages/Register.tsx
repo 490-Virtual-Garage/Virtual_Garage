@@ -1,9 +1,22 @@
-function Register() {
-    return (
-        <div className="flex justify-center flex-center min-h-screen">
-            <p>This is a sign up page</p>
+import { Link } from 'react-router-dom'
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+
+function Login() {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+
+      <main className="background register">
+        <div className="flex flex-col"> 
+            <h1>Register</h1>
+            
         </div>
-    )
+      </main>
+
+      <Footer />
+    </div>
+  )
 }
 
-export default Register;
+export default Login

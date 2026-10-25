@@ -1,9 +1,22 @@
+import { Link } from 'react-router-dom'
+import Footer from "../components/Footer";
+import Header from "../components/Header";
+
 function Login() {
-    return (
-        <div className="flex justify-center flex-center min-h-screen">
-            <p>This is a login page</p>
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+
+      <main className="background login">
+        <div className="flex flex-col"> 
+            <h1>Login</h1>
+            
         </div>
-    )
+      </main>
+
+      <Footer />
+    </div>
+  )
 }
 
-export default Login;
+export default Login

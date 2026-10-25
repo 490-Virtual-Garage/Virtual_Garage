@@ -41,6 +41,7 @@
   }
 }
 
+/* Landing Page Styles */
 .landing {
   flex: 1;
   display: flex;
@@ -102,4 +103,25 @@
 @media (max-width: 560px) {
   .landing-nav { flex-direction: column; width: 100%; }
   .landing-btn { width: 100%; }
+}
+
+/* Login Page Styles */
+.login {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem 7vh;
+  text-align: center;
+}
+
+.register {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem 7vh;
+  text-align: center;
 }
