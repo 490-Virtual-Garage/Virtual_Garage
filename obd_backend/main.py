@@ -2,7 +2,6 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-
 @app.post("/captures")
 def receive_capture(capture: dict):
     session = capture["session"]
