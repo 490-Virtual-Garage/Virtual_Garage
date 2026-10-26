@@ -1,0 +1,151 @@
+{
+    "session": {
+        "session_id": "dbfddab7-d8aa-47a4-a9eb-9cb566a06254",
+        "vehicle": "SAMPLE (fake data)",
+        "vin": "KMHLM4AG1SU******",
+        "protocol": "ISO 15765-4 (CAN 11/500)",
+        "started_at": "2026-10-13T19:49:22.764-07:00",
+        "ended_at": "2026-10-13T19:49:22.775-07:00"
+    },
+    "supported_pids": [
+        "RPM",
+        "SPEED",
+        "ENGINE_LOAD",
+        "THROTTLE_POS",
+        "INTAKE_TEMP",
+        "SHORT_FUEL_TRIM_1",
+        "LONG_FUEL_TRIM_1"
+    ],
+    "dtcs": {
+        "stored": [],
+        "pending": []
+    },
+    "readings": [
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "RPM",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SPEED",
+            "value": null,
+            "unit": null
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "ENGINE_LOAD",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "THROTTLE_POS",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "INTAKE_TEMP",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SHORT_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "LONG_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "RPM",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SPEED",
+            "value": null,
+            "unit": null
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "ENGINE_LOAD",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "THROTTLE_POS",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "INTAKE_TEMP",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SHORT_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "LONG_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "RPM",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SPEED",
+            "value": null,
+            "unit": null
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "ENGINE_LOAD",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "THROTTLE_POS",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "INTAKE_TEMP",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "SHORT_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        },
+        {
+            "t": "2026-10-13T19:49:22.766-07:00",
+            "pid": "LONG_FUEL_TRIM_1",
+            "value": 858.75,
+            "unit": "revolution_per_minute"
+        }
+    ]
+}
