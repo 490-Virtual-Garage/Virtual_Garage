@@ -49,27 +49,40 @@ function Register() {
             <h1>Sign Up</h1>
             <h2>Create your account</h2>
           </div>
-          <input
-            type="email"
-            id="myTextbox1"
-            name="myTextbox1"
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            type="password"
-            id="myTextbox2"
-            name="myTextbox2"
-            placeholder="Enter Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleRegister()
+            }}
+            className="flex flex-col gap-4"
+          >
+            <input
+              className="bg-gray-900 px-2"
+              type="email"
+              name="email"
+              placeholder="Enter Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
 
-          {error && <p className="text-red-500">{error}</p>}
+            <input
+              className="bg-gray-900 px-2"
+              type="password"
+              name="password"
+              placeholder="Enter Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
 
-          <button onClick={handleRegister}>Create Account</button>
-          <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Login</Link></p>
+            {error && <p className="text-red-500">{error}</p>}
+            
+            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Create Account</button>
+          </form>
+          <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline cursor-pointer">Login</Link></p>
         </Card>
       </main>
 

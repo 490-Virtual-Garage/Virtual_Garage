@@ -1,9 +1,44 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import '../firebase';
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import Card from '../components/Card';
 
 function Login() {
+  //Initialize nav and useStates
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  function handleLogin() {
+    setError('')
+    
+    //Assign Auth object
+    const auth = getAuth();
+
+    //Create user function
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        //Logged in
+        const user = userCredential.user;
+        console.log('User signed in:', user.email)
+
+        //Move to dashboard after proper signup
+        navigate('/dashboard')
+      })
+
+      //Errors
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        console.error(errorCode, errorMessage)
+        setError(errorMessage)
+      });
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -11,14 +46,39 @@ function Login() {
       <main className="background login">
         <Card className="flex flex-col gap-4">
           <div>
-            <h1>Sign Up</h1>
-            <h2>Create your account</h2>
+            <h1>Login</h1>
+            <h2>Welcome Back</h2>
           </div>
-          <input type="text" id="myTextbox1" name="myTextbox1" placeholder="Enter Email/Username"/>
-          <input type="text" id="myTextbox2" name="myTextbox2" placeholder="Enter Password"/>
+          
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleLogin()
+            }}
+            className="flex flex-col gap-4"
+          >
+            <input
+              className="bg-gray-900 px-2"
+              type="email"
+              name="email"
+              placeholder="Enter Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
 
-          {/* Work on button later when doing auth */}
-          <button>Login</button>
+            <input
+              className="bg-gray-900 px-2"
+              type="password"
+              name="password"
+              placeholder="Enter Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+
+            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Log in</button>
+          </form>
           <p>Don't have an account? <Link to="/signup" className="text-blue-500 hover:underline">Sign up</Link></p>
         </Card>  
       </main>
