@@ -50,7 +50,8 @@ def group_readings(captured_data):
         pid = reading["pid"]
         if pid not in grouped:
             grouped[pid] = []
-        grouped[pid].append((reading["t"], reading["value"]))
+        seconds = datetime.fromisoformat(reading["t"]).timestamp() 
+        grouped[pid].append((seconds, reading["value"]))
     return grouped
 
 
@@ -98,9 +99,9 @@ def in_condition(moment, condition):
     ]  # get the value of that PID at this moment, then check if those values are under or over the thresholds
     # for their respective conditions
     if condition["check"] == "below":
-        return value < condition["below"]
+        return value < condition["value"]
     if condition["check"] == "above":
-        return value > condition["above"]
+        return value > condition["value"]
     else:
         return False
 
@@ -128,24 +129,23 @@ def check_clause(clause, moments, conditions):
     return "unknown", average
 
 
-#def check_rule(rule, moments, conditions):
+def check_rule(rule, moments, conditions):
     """Check if a rule is satisfied by the moments and conditions."""
-    #This function might not work as intended yet so commented out
-    #condition = rule["if"]["conditions"]
+    evidence = []
+    any_unknown = False
 
-    #values = []  # get the values of the PID in this rule for all moments that satisfy the condition
-    #for moment in moments:
-        #if in_condition(moment, condition) and rule["if"]["pid"] in moment:
-            #values.append(moment[rule["if"]["pid"]])
+    for clause in rule["if"]:
+        result, average = check_clause(clause, moments, conditions) #check if the clause is satisfied by the moments and conditions
+        evidence.append({"pid": clause["pid"], "during": clause["during"], "average": average})
+    #"fired' in this context means that the rule is satisfied by the IF condition
+        if result is False:
+            return "not_fired", evidence
+        if result == "unknown":
+            any_unknown = True
 
-    #if (
-        #rule["if"]["check"] == "above"
-    #):  # check if any of the values are above the threshold specified in the rule
-        #return any(value > rule["if"]["value"] for value in values)
-    #if rule["if"]["check"] == "below":
-        #return any(value < rule["if"]["value"] for value in values)
-
-    #return False  # If the check type is not recognized, return False
+    if any_unknown:
+        return "unknown", evidence
+    return "fired", evidence
 
 
 def diagnose(graph, captured_data):
