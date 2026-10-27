@@ -58,6 +58,7 @@ function Login() {
             className="flex flex-col gap-4"
           >
             <input
+              className="bg-gray-900 px-2"
               type="email"
               name="email"
               placeholder="Enter Email"
@@ -67,6 +68,7 @@ function Login() {
             />
 
             <input
+              className="bg-gray-900 px-2"
               type="password"
               name="password"
               placeholder="Enter Password"
@@ -75,7 +77,7 @@ function Login() {
               required
             />
 
-            <button type="submit">Log In</button>
+            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Log in</button>
           </form>
           <p>Don't have an account? <Link to="/signup" className="text-blue-500 hover:underline">Sign up</Link></p>
         </Card>  

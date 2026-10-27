@@ -57,6 +57,7 @@ function Register() {
             className="flex flex-col gap-4"
           >
             <input
+              className="bg-gray-900 px-2"
               type="email"
               name="email"
               placeholder="Enter Email"
@@ -67,6 +68,7 @@ function Register() {
             />
 
             <input
+              className="bg-gray-900 px-2"
               type="password"
               name="password"
               placeholder="Enter Password"
@@ -77,10 +79,10 @@ function Register() {
             />
 
             {error && <p className="text-red-500">{error}</p>}
-
-            <button type="submit">Create Account</button>
+            
+            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Create Account</button>
           </form>
-          <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Login</Link></p>
+          <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline cursor-pointer">Login</Link></p>
         </Card>
       </main>
 
