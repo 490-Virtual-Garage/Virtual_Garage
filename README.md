@@ -1,8 +1,8 @@
-### This branch will be merged with the backend in the future, for now it's only for testing out fastAPI integration/features and creating a full data pipeline. 
+### This branch builds one image and runs two containers: the ELM327 emulator, and a website container that serves the React app and the FastAPI backend (`api.py`) side by side.
 
 # Virtual Garage - Scanner Environment
 
-This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website and runs the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
+This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website, runs the FastAPI backend, and is where you run the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
 
 ## Prerequisite
 
@@ -32,7 +32,7 @@ Run this once per computer. If Docker says the network already exists, that is f
 docker run --detach --interactive --tty \
   --name virtual-garage-emulator \
   --network virtual-garage-net \
-  -p 35000:35000 \
+  -p 127.0.0.1:35000:35000 \
   virtual-garage-elm:dev \
   python3 -m elm -s car -n 35000 -i 0.0.0.0
 ```
@@ -41,27 +41,29 @@ This starts the simulated OBD-II adapter in the background. `--network` puts it 
 
 ### 4. Run the website
 
-This is the second container. It serves the React app and is also where you run the Python client. It joins the same network, so the emulator's name resolves. The repository is mounted at `/app` so edits show up without a rebuild. The second mount keeps the frontend dependencies from the image, because the repository mount would otherwise hide them.
+This is the second container. It serves the React app, runs the FastAPI backend, and is also where you run the Python client. It joins the same network, so the emulator's name resolves. The repository is mounted at `/app` so edits show up without a rebuild. The second mount keeps the frontend dependencies from the image, because the repository mount would otherwise hide them.
 
 ```bash
 docker run --detach \
   --name virtual-garage-web \
   --network virtual-garage-net \
   -p 127.0.0.1:5173:5173 \
+  -p 127.0.0.1:8000:8000 \
   --mount type=bind,src="$PWD",dst=/app \
   --mount type=volume,src=virtual-garage-frontend-modules,dst=/app/frontend/node_modules \
   -e ELM_HOST=virtual-garage-emulator \
   -e ELM_PORT=35000 \
-  --workdir /app/frontend \
   virtual-garage-elm:dev \
-  npm run dev -- --host 0.0.0.0
+  sh /app/dev.sh
 ```
 
-The container's main job is the website, so it stays running in the background. You get a shell inside it in step 5. `--host 0.0.0.0` lets your browser reach Vite from outside the container.
+`dev.sh` starts two processes: Uvicorn serving `api.py` on port 8000 in the background, and the Vite dev server on port 5173 in the foreground. Vite is the main process, so the container stays running as long as the website does, and stopping the container stops Uvicorn too. You get a shell inside it in step 5. `--host 0.0.0.0` lets your browser reach both servers from outside the container.
 
 `ELM_HOST` and `ELM_PORT` tell the Python client where the emulator is, so you don't pass them on every command.
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173) for the website and [http://localhost:8000/docs](http://localhost:8000/docs) for the API.
+
+Both servers log to the same place:
 
 ```bash
 docker logs virtual-garage-web
@@ -114,53 +116,49 @@ docker rm virtual-garage-emulator virtual-garage-web
 docker network rm virtual-garage-net
 ```
 
-If `frontend/package.json` changes, rebuild the image, remove the dependency volume, and start the website container again:
+```bash
+docker image rm virtual-garage-elm:dev
+```
+
+Edits to the Python files and the React source are picked up without a rebuild: the repository is bind-mounted, Vite hot-reloads the frontend, and Uvicorn runs with `--reload` so saving `api.py` or `nhtsa_recalls.py` restarts the API. A rebuild is only needed when `requirements.txt` or `frontend/package.json` changes. For `frontend/package.json`, also remove the dependency volume before starting the website container again:
 
 ```bash
 docker volume rm virtual-garage-frontend-modules
 ```
 
-## Recalls service
+## API
 
-The scanner tells you what is wrong with a car right now. The recalls service answers a different question: whether the manufacturer has already issued a safety campaign for that vehicle. It runs as its own container and reads the free NHTSA recalls API, so it needs no key and no account.
+The scanner tells you what is wrong with a car right now. The API adds two more things: a recalls lookup that asks whether the manufacturer has already issued a safety campaign for a vehicle, and an endpoint that receives OBD captures posted from a laptop plugged into a real car. The recalls lookup reads the free NHTSA recalls API, so it needs no key and no account.
 
-It is a separate container from the website because it is a separate concern, and because a failure in one should not take down the other.
+The API runs inside the website container, started by `dev.sh` alongside Vite. There is no separate container or image for it. Port 8000 is published to `127.0.0.1`, which keeps it reachable from your own computer but not from anyone else on your network.
 
 ### Files
 
 | File | Purpose |
 | --- | --- |
+| `api.py` | The FastAPI app. Three routes: `/health`, `/recalls`, `/captures`. Run with `uvicorn api:app`. |
 | `nhtsa_recalls.py` | Client for the NHTSA API. Handles retries, caching, and date parsing. |
-| `recalls_service.py` | FastAPI wrapper that exposes the client over HTTP. |
-| `Dockerfile.recalls` | Builds the service image. |
+| `dev.sh` | Starts Uvicorn in the background and Vite in the foreground. This is the website container's command. |
+| `obd_backend/capture.py` | Runs on the laptop with the OBD cable, not in a container. See below. |
+| `obd_backend/sample_capture.json` | A recorded capture, useful for testing `POST /captures` without a car. |
 
-### 1. Build the image
+### Check that it works
 
-```bash
-docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
-```
-
-The `-f` flag is needed because this is the second Dockerfile in the repository. Without it, Docker would use the one named `Dockerfile`, which builds the scanner environment instead.
-
-### 2. Run the container
-
-```bash
-docker run --detach \
-  --name virtual-garage-recalls \
-  --network virtual-garage-net \
-  -p 127.0.0.1:8000:8000 \
-  virtual-garage-recalls:dev
-```
-
-It joins `virtual-garage-net`, the same network the emulator and website use, so the other containers can reach it by name at `http://virtual-garage-recalls:8000`. Publishing to `127.0.0.1` keeps it reachable from your own computer but not from anyone else on your network.
-
-### 3. Check that it works
+With both containers running from steps 3 and 4:
 
 ```bash
 curl "http://localhost:8000/recalls?make=acura&model=rdx&year=2012"
 ```
 
 You should get a JSON object back listing the recall campaigns for that vehicle.
+
+```bash
+curl -X POST http://localhost:8000/captures \
+  -H "Content-Type: application/json" \
+  --data-binary @obd_backend/sample_capture.json
+```
+
+You should get `{"status":"received","session_id":"...","readings":N}` back, and `docker logs virtual-garage-web` shows a line for the capture.
 
 For a friendlier view, open [http://localhost:8000/docs](http://localhost:8000/docs). FastAPI generates an interactive page where you can fill in the parameters and send the request from the browser.
 
@@ -170,8 +168,9 @@ For a friendlier view, open [http://localhost:8000/docs](http://localhost:8000/d
 | --- | --- | --- | --- |
 | GET | `/health` | none | `{"status": "ok"}` |
 | GET | `/recalls` | `make`, `model`, `year` | Recall campaigns for the vehicle |
+| POST | `/captures` | JSON body with `session` and `readings` | `{"status": "received", "session_id": ..., "readings": count}` |
 
-### Reading the response
+### Reading the recalls response
 
 The `status` field matters more than the recall count, because NHTSA returns an empty result both for a vehicle with a clean record and for a make or model it does not recognize. The service tells these apart by checking NHTSA's own vehicle catalog before reporting an empty result.
 
@@ -186,39 +185,25 @@ Two fields deserve to be shown prominently in the interface rather than listed a
 
 ### Calling it from the website
 
-The React app runs in the browser, so requests go through your own computer rather than the Docker network:
+The React app runs in the browser, so requests go through your own computer rather than the Docker network. Vite proxies `/health`, `/recalls`, and `/captures` to Uvicorn (see `frontend/vite.config.js`), so the page can call the API on its own origin:
 
 ```js
-const res = await fetch(
-  `http://localhost:8000/recalls?make=${make}&model=${model}&year=${year}`
-);
+const res = await fetch(`/recalls?make=${make}&model=${model}&year=${year}`);
 const data = await res.json();
 ```
 
-The service allows requests from `http://localhost:5173` so the development server can call it directly.
+That request goes to `http://localhost:5173/recalls`, and Vite forwards it to the API inside the container. The API is also reachable directly at `http://localhost:8000` because that port is published, and it allows requests from `http://localhost:5173`. No page calls it yet.
+
+### Capturing from a real car
+
+`obd_backend/capture.py` runs on the computer plugged into the car, outside the two-container demo. It needs the `obd` package installed there (`pip install obd`), reads the adapter on serial port `COM3`, records for 60 seconds, saves the capture to `captures/<timestamp>.json`, and posts it to `http://127.0.0.1:8000/captures`. That address matches the published API port, so with the website container running on the same computer, the capture lands in the API's log.
 
 ### After changing the code
 
-This container has no bind mount, so edits to `nhtsa_recalls.py` or `recalls_service.py` do not appear until the image is rebuilt and the container replaced:
-
-```bash
-docker rm -f virtual-garage-recalls
-docker build -f Dockerfile.recalls -t virtual-garage-recalls:dev .
-docker run --detach \
-  --name virtual-garage-recalls \
-  --network virtual-garage-net \
-  -p 127.0.0.1:8000:8000 \
-  virtual-garage-recalls:dev
-```
+Edits to `api.py` and `nhtsa_recalls.py` are picked up without a rebuild. The repository is bind-mounted into the website container and Uvicorn runs with `--reload`, so saving a file restarts the API. A rebuild is only for `requirements.txt` or `frontend/package.json`.
 
 ### Troubleshooting
 
-If `curl` reports that it could not connect, the container is not running. `docker ps -a` shows stopped containers as well as running ones, and `docker logs virtual-garage-recalls` shows why it stopped.
+If `curl` reports that it could not connect, the website container is not running or Uvicorn failed to start. `docker ps -a` shows stopped containers as well as running ones, and `docker logs virtual-garage-web` shows both the Uvicorn and Vite output, including any Python error that stopped the API.
 
-### Cleaning up
-
-```bash
-docker stop virtual-garage-recalls
-docker rm virtual-garage-recalls
-```
-
+Stopping and removing `virtual-garage-emulator` and `virtual-garage-web` in the cleanup section above also stops the API. There is nothing else to remove.
