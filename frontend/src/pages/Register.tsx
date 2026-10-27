@@ -49,26 +49,37 @@ function Register() {
             <h1>Sign Up</h1>
             <h2>Create your account</h2>
           </div>
-          <input
-            type="email"
-            id="myTextbox1"
-            name="myTextbox1"
-            placeholder="Enter Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            type="password"
-            id="myTextbox2"
-            name="myTextbox2"
-            placeholder="Enter Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleRegister()
+            }}
+            className="flex flex-col gap-4"
+          >
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+            />
 
-          {error && <p className="text-red-500">{error}</p>}
+            <input
+              type="password"
+              name="password"
+              placeholder="Enter Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
 
-          <button onClick={handleRegister}>Create Account</button>
+            {error && <p className="text-red-500">{error}</p>}
+
+            <button type="submit">Create Account</button>
+          </form>
           <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Login</Link></p>
         </Card>
       </main>
