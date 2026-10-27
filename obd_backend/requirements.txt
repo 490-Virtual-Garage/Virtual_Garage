@@ -1,2 +1,1 @@
-fastapi[standard]
-obd
+﻿psycopg2-binary==2.9.13
