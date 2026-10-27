@@ -1,17 +1,19 @@
+import { Link } from 'react-router-dom'
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 
-function Dashboard() {
+function Landing() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
 
-      <main className="background mainContent flex-1 px-4">
-        <nav className="flex items-center flex-col border border-gray-500 bg-black text-white gap-6 px-[5%] py-[2%]">
-          <h2 className="text-5xl">Menu</h2>
-          <p className="text-3xl">Sign Up</p>
-          <p className="text-3xl">Log in</p>
-          <p className="text-3xl">Option 3</p>
+      <main className="background landing">
+        <h2 className="landing-title">Welcome to your garage</h2>
+        <p className="landing-tagline">Keep your cars, parts, and projects in one place.</p>
+
+        <nav className="landing-nav">
+          <Link to="/scan" className="landing-btn landing-btn-primary">Scan Your Car</Link>
+          <Link to="/history" className="landing-btn">Garage History</Link>
         </nav>
       </main>
 
@@ -20,4 +22,4 @@ function Dashboard() {
   )
 }
 
-export default Dashboard
+export default Landing
