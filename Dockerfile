@@ -15,11 +15,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements.txt .
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-COPY elm_client.py .
+COPY elm_client.py . api.py nhtsa_recalls.py dev.sh .
+COPY obd_backend/ ./obd_backend/
 
 COPY frontend/package.json frontend/package-lock.json frontend/
 RUN npm ci --prefix frontend
 
 COPY frontend frontend/
 
-EXPOSE 35000 5173
+EXPOSE 35000 5173 8000
