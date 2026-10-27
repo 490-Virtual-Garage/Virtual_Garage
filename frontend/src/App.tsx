@@ -4,6 +4,7 @@ import Landing from './pages/Landing'
 import Register from './pages/Register'
 import Login from './pages/Login'
 import History from './pages/History'
+import Scan from './pages/Scan'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/history" element={<History />} />
+      <Route path="/scan" element={<Scan />} />
     </Routes>
   )
 }
