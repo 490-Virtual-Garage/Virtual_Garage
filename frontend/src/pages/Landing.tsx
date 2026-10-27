@@ -14,7 +14,6 @@ function Landing() {
         <nav className="landing-nav">
           <Link to="/signup" className="landing-btn landing-btn-primary">Sign up</Link>
           <Link to="/login" className="landing-btn">Log in</Link>
-          <Link to="/garage" className="landing-btn">Browse garage</Link>
         </nav>
       </main>
 
