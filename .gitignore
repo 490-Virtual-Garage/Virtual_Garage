@@ -8,4 +8,11 @@ venv/
 !.env.example
 *.pem
 .DS_Store
+<<<<<<< Updated upstream
 data/
+=======
+data/
+.env
+.venv/
+__pycache__/
+>>>>>>> Stashed changes
