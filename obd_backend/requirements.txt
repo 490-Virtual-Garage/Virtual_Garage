@@ -1,1 +1,5 @@
-﻿psycopg2-binary==2.9.13
+﻿fastapi[standard]
+obd
+sqlalchemy
+psycopg[binary]
+python-dotenv
