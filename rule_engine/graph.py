@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
+from pathlib import Path
 
-with open("samplecapture.json", "r", encoding="utf-8") as file:
-    captured_data = json.load(file)
+HERE = Path(__file__).parent   # the folder graph.py lives in (rule_engine/)
 
 
-def load_graph(path):
+def load_graph(path=HERE / "dtc_pid.json"): #so fastAPI can call load_graph() without providing the path
     """Load the diagnostic knowledge file and build the graph's lookup tables."""
     with open(path, "r", encoding="utf-8") as file:
         data = json.load(file)
@@ -28,6 +28,10 @@ def load_graph(path):
             rules_for[cause] = []
         rules_for[cause].append(rule)
 
+    prior_of = {}
+    for edge in data["edges"]:
+        prior_of[(edge["from"], edge["to"])] = edge["prior"]
+
     # final graph dictionary with all the data
     graph = {
         "causes_of": causes_of,
@@ -35,6 +39,7 @@ def load_graph(path):
         "nodes": data["nodes"],
         "conditions": data["conditions"],
         "edges": data["edges"],
+        "prior_of": prior_of,
     }
     return graph
 
@@ -50,7 +55,7 @@ def group_readings(captured_data):
         pid = reading["pid"]
         if pid not in grouped:
             grouped[pid] = []
-        seconds = datetime.fromisoformat(reading["t"]).timestamp() 
+        seconds = datetime.fromisoformat(reading["t"]).timestamp()
         grouped[pid].append((seconds, reading["value"]))
     return grouped
 
@@ -58,7 +63,9 @@ def group_readings(captured_data):
 def nearest_value(values, t):
     """Get the nearest value for one PIDs list at target time t, helper function for building moments."""
 
-    best = values[0]  # the best pair of (time,value) found so far, its the first thing in the list [0 => time][1 => value]
+    best = values[
+        0
+    ]  # the best pair of (time,value) found so far, its the first thing in the list [0 => time][1 => value]
     gap = abs(best[0] - t)  # the gap between the best time and the target time
 
     for time, value in values:
@@ -135,9 +142,13 @@ def check_rule(rule, moments, conditions):
     any_unknown = False
 
     for clause in rule["if"]:
-        result, average = check_clause(clause, moments, conditions) #check if the clause is satisfied by the moments and conditions
-        evidence.append({"pid": clause["pid"], "during": clause["during"], "average": average})
-    #"fired' in this context means that the rule is satisfied by the IF condition
+        result, average = check_clause(
+            clause, moments, conditions
+        )  # check if the clause is satisfied by the moments and conditions
+        evidence.append(
+            {"pid": clause["pid"], "during": clause["during"], "average": average}
+        )
+        # "fired' in this context means that the rule is satisfied by the IF condition
         if result is False:
             return "not_fired", evidence
         if result == "unknown":
@@ -148,12 +159,8 @@ def check_rule(rule, moments, conditions):
     return "fired", evidence
 
 
-def diagnose(graph, captured_data):
-    """Diagnose possible causes based on OBD data against the inference engine rules and causes."""
-    # This function would implement the logic to analyze the captured_data
-    # against the graph's rules and causes to determine potential issues.
-    # For now, it is a placeholder for future implementation.
-
+def add_test_dtc(captured_data, graph):
+    """Add a test DTC to the captured data for testing purposes, this is for testing only (p0171 for now)"""
     stored = captured_data["dtcs"]["stored"]
     existing_codes = [entry[0] for entry in stored]  # codes already in the capture
 
@@ -163,28 +170,66 @@ def diagnose(graph, captured_data):
         if node["type"] == "dtc" and node_id not in existing_codes:
             stored.append([node_id, node["description"]])
 
-    # does this capture session have a code? yes its p0171 (for testing purposes), so we check the graph for possible causes of that code and return them
-    # causes_of is a list of possible causes for this code so we do a direct lookup
-    causes = graph["causes_of"]["P0171"]
-    # according to this code, and these possible causes, we can now check the rules for each cause and see if any of them are satisfied by the captured data
-    for cause in causes:
-        rules = graph["rules_for"].get(cause, [])
-        print(cause, [r["id"] for r in rules])
 
-    return causes
+def diagnose(graph, captured_data):
+    """Diagnose possible causes based on OBD data against the inference engine rules and causes."""
+    new_list = captured_data["dtcs"]["stored"] + captured_data["dtcs"]["pending"]
+    codes = []
+    for entry in new_list:
+        if entry[0] not in codes:
+            codes.append(entry[0])
 
+    if len(codes) == 0:
+        return {
+            "status": "no_dtc",
+            "message": "no trouble codes reported",
+            "causes": [],
+        }
+    moments = build_moments(group_readings(captured_data))
 
-# def diagnose(graph,captured_data):
-# function to diagnose possible causes, based off OBD data against the inference engine rules and causes
+    results, unknown_dtcs = [], []
 
+    for code in codes:
+        if code not in graph["causes_of"]:
+            unknown_dtcs.append(code)
+            continue
+        for cause in graph["causes_of"][code]:
+            score = graph["prior_of"][(cause, code)]
+            evidence, not_checked = [], []
 
+            for rule in graph["rules_for"].get(cause, []):
+                status, rule_evidence = check_rule(rule, moments, graph["conditions"])
+                if status == "fired":
+                    if rule["then"]["effect"] == "supports":
+                        score += rule["then"]["weight"]
+                    else:
+                        score -= rule["then"]["weight"]
+                    evidence.append({"rule_id": rule["id"], "explanation": rule["explain"], "readings": rule_evidence})
+                elif status == "unknown":
+                    not_checked.append(rule["id"])
+            node = graph["nodes"][cause]
+            results.append({
+                "dtc": code,
+                "cause": cause,
+                "name": node["name"],
+                "repair_tier": node["repair_tier"],
+                "score": round(score, 2),
+                "evidence": evidence,
+                "not_checked": not_checked,
+            })
+    results.sort(key=lambda r: r["score"], reverse=True)
+    return {"status": "ok", "dtcs": codes, "unknown_dtcs": unknown_dtcs, "causes": results}
+
+           
 if __name__ == "__main__":
-    graph = load_graph("dtc_pid.json")
-
+    graph = load_graph()
+    with open(HERE / "samplecapture.json", "r", encoding="utf-8") as file:
+        captured_data = json.load(file)
     # for dtc, causes in graph["causes_of"].items():
     # print(f"{dtc} can be caused by: {causes}")
 
     # for cause, rules in graph["rules_for"].items():
     # print(f"{cause} rules: {[r['id'] for r in rules]}")
 
-    print(f"the possible causes for this code are: {diagnose(graph, captured_data)}")
+    add_test_dtc(captured_data, graph)
+    print(json.dumps(diagnose(graph, captured_data), indent=2))
