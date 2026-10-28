@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:17
+    container_name: vg-postgres
+    environment:
+      POSTGRES_USER: virtual_garage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in obd_backend/.env.docker}
+      POSTGRES_DB: virtual_garage_users_dev
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U virtual_garage -d virtual_garage_users_dev
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./obd_backend
+    container_name: obd_backend_test
+    env_file:
+      - ./obd_backend/.env.docker
+    environment:
+      DATABASE_URL: "postgresql+psycopg://virtual_garage:${POSTGRES_PASSWORD}@db:5432/virtual_garage_users_dev"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8000"
+    restart: unless-stopped
+
+  emulator:
+    build:
+      context: .
+    image: virtual-garage-elm:dev
+    container_name: virtual-garage-emulator
+    command:
+      - python3
+      - -m
+      - elm
+      - -s
+      - car
+      - -n
+      - "35000"
+      - -i
+      - 0.0.0.0
+    stdin_open: true
+    tty: true
+    ports:
+      - "127.0.0.1:35000:35000"
+
+  web:
+    build:
+      context: .
+    image: virtual-garage-elm:dev
+    container_name: virtual-garage-web
+    command: ["sh", "-c", "sed -i 's/\\r$$//' /app/dev.sh && sh /app/dev.sh"]
+    depends_on:
+      - emulator
+    environment:
+      ELM_HOST: emulator
+      ELM_PORT: "35000"
+    ports:
+      - "127.0.0.1:5173:5173"
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - .:/app
+      - frontend_modules:/app/frontend/node_modules
+
+volumes:
+  pgdata:
+  frontend_modules:
