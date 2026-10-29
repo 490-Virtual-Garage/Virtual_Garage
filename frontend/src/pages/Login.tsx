@@ -1,42 +1,36 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import '../firebase';
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import Card from '../components/Card';
+import { useAuth } from '../contexts/AuthContext'
+
+import Footer from '../components/Footer'
+import Header from '../components/Header'
+import Card from '../components/Card'
 
 function Login() {
-  //Initialize nav and useStates
   const navigate = useNavigate()
+  const { login } = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  function handleLogin() {
+  async function handleLogin() {
     setError('')
-    
-    //Assign Auth object
-    const auth = getAuth();
 
-    //Create user function
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        //Logged in
-        const user = userCredential.user;
-        console.log('User signed in:', user.email)
+    try {
+      const { user } = await login(email, password)
 
-        //Move to dashboard after proper signup
-        navigate('/dashboard')
-      })
+      console.log('signed in:', user.uid)
 
-      //Errors
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error(errorCode, errorMessage)
-        setError(errorMessage)
-      });
+      navigate('/dashboard')
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(error.message)
+        setError(error.message)
+      } else {
+        setError('An unexpected error occurred.')
+      }
+    }
   }
 
   return (
@@ -49,9 +43,9 @@ function Login() {
             <h1>Login</h1>
             <h2>Welcome Back</h2>
           </div>
-          
+
           <form
-            onSubmit={(e) => {
+            onSubmit={e => {
               e.preventDefault()
               handleLogin()
             }}
@@ -63,7 +57,8 @@ function Login() {
               name="email"
               placeholder="Enter Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
 
@@ -73,14 +68,31 @@ function Login() {
               name="password"
               placeholder="Enter Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
             />
 
-            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Log in</button>
+            {error && <p className="text-red-500">{error}</p>}
+
+            <button
+              className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer"
+              type="submit"
+            >
+              Log in
+            </button>
           </form>
-          <p>Don't have an account? <Link to="/signup" className="text-blue-500 hover:underline">Sign up</Link></p>
-        </Card>  
+
+          <p>
+            Don't have an account?{' '}
+            <Link
+              to="/signup"
+              className="text-blue-500 hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
+        </Card>
       </main>
 
       <Footer />
