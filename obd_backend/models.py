@@ -15,3 +15,6 @@ class Vehicle(Base):
     vehicleid = Column(Integer, primary_key=True, index=True)
     userid = Column(Integer, ForeignKey("users.userid", ondelete="CASCADE"), nullable=False, index=True)
     vin = Column(String, nullable=False)
+    make = Column(String, nullable=False)
+    model = Column(String, nullable=False)
+    year = Column(Integer, nullable=False)
