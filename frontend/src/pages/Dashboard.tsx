@@ -43,7 +43,8 @@ function Dashboard() {
 
         <nav className="landing-nav">
           <Link to="/scan" className="landing-btn landing-btn-primary">Scan Your Car</Link>
-          <Link to="/history" className="landing-btn">Garage History</Link>
+          <Link to="/history" className="landing-btn landing-btn-secondary">Garage History</Link>
+          <Link to="/vehicles" className="landing-btn landing-btn-tertiary ">Vehicles</Link>
           <button onClick={handleSignOut} className="landing-btn cursor-pointer">Logout</button>
           {error && <p className="text-red-500">{error}</p>}
         </nav>

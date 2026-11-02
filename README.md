@@ -1,90 +1,86 @@
 ### This branch builds one image and runs two containers: the ELM327 emulator, and a website container that serves the React app and the FastAPI backend (`api.py`) side by side.
 
-# Virtual Garage - Scanner Environment
+# Virtual Garage - Development Environment
 
-This is the team's reproducible development environment for the Virtual Garage scanner feature. One image runs as two containers: a simulated ELM327/OBD-II adapter, and a development container that serves the React website, runs the FastAPI backend, and is where you run the Python client. The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
+This is the team's reproducible development environment for Virtual Garage. A single Docker Compose file runs everything:
+
+- **web**: serves the React website (Vite) and the FastAPI scanner API (`api.py`). This is also where you run the Python client.
+- **emulator**: a simulated ELM327/OBD-II adapter.
+- **backend**: the OBD backend service.
+- **db**: Postgres.
+
+The client asks the adapter for RPM, speed, coolant temperature, and stored DTCs.
 
 ## Prerequisite
 
-Install and open Docker Desktop. Teammates do not need to install Python, Node, or the ELM327 emulator directly.
+Install and open Docker Desktop. You do not need Python, Node, Postgres, or the ELM327 emulator installed locally.
 
-## Build and run it
+## Setup
 
-### 1. Build the image
+### 1. Create the env files
 
-```bash
-docker build -t virtual-garage-elm:dev .
+**Frontend** (`.env.development`):
+
+```
+VITE_FIREBASE_API_KEY=paste_apiKey_here
+VITE_FIREBASE_AUTH_DOMAIN=paste_authDomain_here
+VITE_FIREBASE_PROJECT_ID=paste_projectId_here
+VITE_FIREBASE_STORAGE_BUCKET=paste_storageBucket_here
+VITE_FIREBASE_MESSAGING_SENDER_ID=paste_messagingSenderId_here
+VITE_FIREBASE_APP_ID=paste_appId_here
+VITE_FIREBASE_MEASUREMENT_ID=paste_measurementId_here
 ```
 
-This reads the `Dockerfile` and creates a reusable local image named `virtual-garage-elm:dev`. The final `.` means "use this folder as the build context." The image contains Python for the scanner and Node for the website.
+**Backend:**
 
-### 2. Create the containers' private network
+- `obd_backend/.env`: local (non-Docker) backend configuration.
+- `obd_backend/.env.docker`: Docker backend configuration. Must include `POSTGRES_PASSWORD=...`
+
+Notes:
+- Postgres only applies `POSTGRES_PASSWORD` the first time it initializes an empty volume. If you change it later, run `down -v` (see below) to reset the database.
+- Special characters in the password (`@ : / #` etc.) must be URL-encoded, since it goes into `DATABASE_URL`.
+- Never commit `.env.docker`.
+
+### 2. Build and start everything
 
 ```bash
-docker network create virtual-garage-net
+docker compose --env-file obd_backend/.env.docker up --build
 ```
 
-Run this once per computer. If Docker says the network already exists, that is fine.
-
-### 3. Run the ELM327 emulator
+Add `-d` to run in the background, then follow the logs with:
 
 ```bash
-docker run --detach --interactive --tty \
-  --name virtual-garage-emulator \
-  --network virtual-garage-net \
-  -p 127.0.0.1:35000:35000 \
-  virtual-garage-elm:dev \
-  python3 -m elm -s car -n 35000 -i 0.0.0.0
+docker compose --env-file obd_backend/.env.docker logs -f
 ```
 
-This starts the simulated OBD-II adapter in the background. `--network` puts it on the private Docker network, and `-p 127.0.0.1:35000:35000` makes its port reachable only from the developer's own computer.
+`--env-file` is required on every compose command. Compose only reads `POSTGRES_PASSWORD` from a root `.env` or your shell, not from `obd_backend/.env.docker`. Without the flag you get the "Set POSTGRES_PASSWORD" error.
 
-### 4. Run the website
+Compose creates the network and wires the services together by name, so there is no `docker network create` or `docker run` step.
 
-This is the second container. It serves the React app, runs the FastAPI backend, and is also where you run the Python client. It joins the same network, so the emulator's name resolves. The repository is mounted at `/app` so edits show up without a rebuild. The second mount keeps the frontend dependencies from the image, because the repository mount would otherwise hide them.
+## Services and ports
 
-```bash
-docker run --detach \
-  --name virtual-garage-web \
-  --network virtual-garage-net \
-  -p 127.0.0.1:5173:5173 \
-  -p 127.0.0.1:8000:8000 \
-  --mount type=bind,src="$PWD",dst=/app \
-  --mount type=volume,src=virtual-garage-frontend-modules,dst=/app/frontend/node_modules \
-  -e ELM_HOST=virtual-garage-emulator \
-  -e ELM_PORT=35000 \
-  virtual-garage-elm:dev \
-  sh /app/dev.sh
-```
+| Service  | Container               | URL / Port                 |
+|----------|-------------------------|----------------------------|
+| Website  | virtual-garage-web      | http://localhost:5173      |
+| Web API  | virtual-garage-web      | http://localhost:8000/docs |
+| Backend  | obd_backend_test        | http://localhost:8001/docs |
+| Postgres | vg-postgres             | localhost:5433             |
+| Emulator | virtual-garage-emulator | localhost:35000            |
 
-`dev.sh` starts two processes: Uvicorn serving `api.py` on port 8000 in the background, and the Vite dev server on port 5173 in the foreground. Vite is the main process, so the container stays running as long as the website does, and stopping the container stops Uvicorn too. You get a shell inside it in step 5. `--host 0.0.0.0` lets your browser reach both servers from outside the container.
+All ports are bound to `127.0.0.1`, so they are only reachable from your own computer.
 
-`ELM_HOST` and `ELM_PORT` tell the Python client where the emulator is, so you don't pass them on every command.
+## Running the Python client
 
-Open [http://localhost:5173](http://localhost:5173) for the website and [http://localhost:8000/docs](http://localhost:8000/docs) for the API.
-
-Both servers log to the same place:
+`ELM_HOST` and `ELM_PORT` are already set by Compose, so just run:
 
 ```bash
-docker logs virtual-garage-web
-```
-
-### 5. Open a shell in the website container
-
-```bash
-docker exec -it -w /app virtual-garage-web sh
-```
-
-Your prompt changes to `#`. You are now inside the container, in the repository folder. Run the client from there:
-
-```bash
-python3 elm_client.py
+docker compose --env-file obd_backend/.env.docker exec web python3 elm_client.py
 ```
 
 This opens one connection to the emulator and shows a menu:
 
 ```text
-Connected to ELM327 emulator at virtual-garage-emulator:35000
+Connected to ELM327 emulator at emulator:35000
 
   1) Engine RPM [010C]
   2) Vehicle speed [010D]
@@ -94,36 +90,91 @@ Connected to ELM327 emulator at virtual-garage-emulator:35000
 Choose:
 ```
 
-Type a number and press Enter to see the raw reply and the decoded value. The connection stays open until you choose `q`, which returns you to the container's shell. Run `python3 elm_client.py` again as often as you like.
+Type a number and press Enter to see the raw reply and the decoded value. The connection stays open until you choose `q`. Run the command again as often as you like.
 
 The default emulator scenario normally has no stored DTCs, so option 4 replies `43 00`.
 
-To leave the container, type `exit`. The website keeps running, because `exit` only closes this shell.
-
-## Re-run and clean up
-
-To see the emulator's output:
+For an interactive shell inside the web container:
 
 ```bash
-docker logs virtual-garage-emulator
+docker compose --env-file obd_backend/.env.docker exec web sh
 ```
 
-When you are finished:
+Type `exit` to leave. The website keeps running.
+
+## Common commands
 
 ```bash
-docker stop virtual-garage-emulator virtual-garage-web
-docker rm virtual-garage-emulator virtual-garage-web
-docker network rm virtual-garage-net
+# Rebuild and start (foreground)
+docker compose --env-file obd_backend/.env.docker up --build
+
+# Rebuild and start in the background
+docker compose --env-file obd_backend/.env.docker up --build -d
+
+# Stop and remove containers (keeps the database)
+docker compose --env-file obd_backend/.env.docker down
+
+# Stop and remove containers AND volumes (wipes the database)
+docker compose --env-file obd_backend/.env.docker down -v
+
+# Check running containers
+docker ps
+
+# Logs for one service (web, emulator, backend, db)
+docker compose --env-file obd_backend/.env.docker logs -f web
+
+# Restart stopped containers without rebuilding (start the DB first)
+docker start vg-postgres
+docker start obd_backend_test
+docker start virtual-garage-emulator
+docker start virtual-garage-web
 ```
 
+## Verify everything works
+
+- Website: http://localhost:5173
+- Web API docs: http://localhost:8000/docs
+- Backend docs (Swagger UI): http://localhost:8001/docs
+- Database: connect with a GUI client on `localhost:5433`, or use the terminal
+
+Check that Postgres is up:
+
 ```bash
+docker exec -it vg-postgres pg_isready -U virtual_garage
+```
+
+Check that the backend can reach the database:
+
+```bash
+docker exec -it obd_backend_test python -c "import os; from sqlalchemy import create_engine, text; url=os.environ['DATABASE_URL']; engine=create_engine(url); conn=engine.connect(); print(conn.execute(text('SELECT current_database(), current_user')).one()); conn.close(); print('Database connection successful')"
+```
+
+## Editing code
+
+Edits to the Python files and the React source are picked up without a rebuild: the repository is bind-mounted into the web container, Vite hot-reloads the frontend, and Uvicorn runs with `--reload` so saving `api.py` or `nhtsa_recalls.py` restarts the API.
+
+A rebuild (`up --build`) is only needed when `requirements.txt` or `frontend/package.json` changes. For `frontend/package.json`, also remove the dependency volume so the new packages are installed:
+
+```bash
+docker compose --env-file obd_backend/.env.docker down
+docker volume ls          # look for <project>_frontend_modules
+docker volume rm <project>_frontend_modules
+docker compose --env-file obd_backend/.env.docker up --build
+```
+
+Don't use `down -v` for this. It also deletes the Postgres data.
+
+## Cleanup
+
+```bash
+# Remove containers, keep the database
+docker compose --env-file obd_backend/.env.docker down
+
+# Remove containers and all volumes (wipes the database)
+docker compose --env-file obd_backend/.env.docker down -v
+
+# Remove the built image
 docker image rm virtual-garage-elm:dev
-```
-
-Edits to the Python files and the React source are picked up without a rebuild: the repository is bind-mounted, Vite hot-reloads the frontend, and Uvicorn runs with `--reload` so saving `api.py` or `nhtsa_recalls.py` restarts the API. A rebuild is only needed when `requirements.txt` or `frontend/package.json` changes. For `frontend/package.json`, also remove the dependency volume before starting the website container again:
-
-```bash
-docker volume rm virtual-garage-frontend-modules
 ```
 
 ## API
