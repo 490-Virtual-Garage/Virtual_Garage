@@ -97,8 +97,17 @@
 }
 
 .landing-btn-primary {
-  background: rgba(220, 233, 255, 0.14);
+  background: rgba(220, 233, 255, 0.25);
 }
+
+.landing-btn-secondary {
+  background: rgba(200, 233, 255, 0.14);
+}
+
+.landing-btn-tertiary {
+  background: rgba(47, 50, 55, 0.626);
+}
+
 
 @media (max-width: 560px) {
   .landing-nav { flex-direction: column; width: 100%; }

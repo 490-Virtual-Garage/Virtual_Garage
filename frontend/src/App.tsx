@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import Login from './pages/Login'
 import History from './pages/History'
 import Scan from './pages/Scan'
+import Vehicles from './pages/Vehicles'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/scan" element={<Scan />} />
+                <Route path="/vehicles" element={<Vehicles />} />
             </Route>
         </Routes>
     )
