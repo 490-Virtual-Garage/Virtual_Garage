@@ -22,7 +22,8 @@ services:
 
   backend:
     build:
-      context: ./obd_backend
+      context: .
+      dockerfile: obd_backend/Dockerfile
     container_name: obd_backend_test
     env_file:
       - ./obd_backend/.env.docker
