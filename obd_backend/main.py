@@ -1,11 +1,15 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine
 from models import User
+from rule_engine.graph import diagnose, load_graph
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
+graph = load_graph()
+latest_capture = None
+latest_diagnosis = None
 
 def get_db():
     db = SessionLocal()
@@ -16,10 +20,12 @@ def get_db():
 
 @app.post("/captures")
 def receive_capture(capture: dict):
+    global latest_capture, latest_diagnosis
     session = capture["session"]
-    readings = capture["readings"]
-    print(f"Got capture {session['session_id']} from {session['vehicle']}: {len(readings)} readings", flush=True)
-    return {"status": "received", "session_id": session["session_id"], "readings": len(readings)}
+    print(f"Got capture {session['session_id']} from {session['vehicle']}: {len(capture['readings'])} readings", flush=True)
+    latest_capture = capture
+    latest_diagnosis = diagnose(graph, capture)
+    return latest_diagnosis
 
 class UserCreate(BaseModel):
     username: str
