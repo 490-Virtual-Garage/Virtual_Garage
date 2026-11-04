@@ -3,3 +3,4 @@ obd
 sqlalchemy
 psycopg[binary]
 python-dotenv
+firebase-admin

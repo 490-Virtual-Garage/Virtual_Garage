@@ -8,11 +8,8 @@ venv/
 !.env.example
 *.pem
 .DS_Store
-<<<<<<< Updated upstream
-data/
-=======
+firebase-service-account*.json
 data/
 .env
 .venv/
 __pycache__/
->>>>>>> Stashed changes

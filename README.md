@@ -177,6 +177,22 @@ docker compose --env-file obd_backend/.env.docker down -v
 docker image rm virtual-garage-elm:dev
 ```
 
+## Accessing the database
+
+With the containers running, open a `psql` shell in the Postgres container:
+
+```powershell
+docker exec -it vg-postgres psql -U virtual_garage -d virtual_garage_users_dev
+```
+
+Useful commands once you're in:
+
+- `\dt` lists the tables
+- `\d users` shows a table's columns
+- `SELECT * FROM users;` shows the saved users
+- `SELECT * FROM vehicles;` shows saved vehicles
+- `\q` quits
+
 ## API
 
 The scanner tells you what is wrong with a car right now. The API adds two more things: a recalls lookup that asks whether the manufacturer has already issued a safety campaign for a vehicle, and an endpoint that receives OBD captures posted from a laptop plugged into a real car. The recalls lookup reads the free NHTSA recalls API, so it needs no key and no account.

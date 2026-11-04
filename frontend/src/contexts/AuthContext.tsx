@@ -5,6 +5,7 @@ import {
     onAuthStateChanged,
     setPersistence,
     browserSessionPersistence,
+    getIdToken,
     type User,
     type UserCredential
 } from 'firebase/auth'
@@ -29,6 +30,15 @@ export function useAuth() {
     return context
 }
 
+async function syncUser(user: User) {
+    const token = await getIdToken(user)
+    const res = await fetch(`http://localhost:8001/users`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error(`User sync failed: ${res.status}`)
+}
+
 type AuthProviderProps = {
     children: React.ReactNode
 }
@@ -43,7 +53,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         password: string
     ): Promise<UserCredential> {
         await setPersistence(auth, browserSessionPersistence)
-        return createUserWithEmailAndPassword(auth, email, password)
+        const cred = await createUserWithEmailAndPassword(auth, email, password)
+        await syncUser(cred.user)
+        return cred
     }
 
     //Session persist on login
