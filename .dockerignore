@@ -7,9 +7,7 @@ __pycache__/
 .env.*
 !.env.example
 .git/
-<<<<<<< Updated upstream
 .DS_Store
-=======
 frontend/node_modules
 frontend/dist
 venv/
@@ -18,4 +16,5 @@ venv/
 .venv/
 .git/
 node_modules/
->>>>>>> Stashed changes
+**/firebase-service-account*.json 
+**/.env*

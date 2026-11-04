@@ -6,9 +6,17 @@ from database import SessionLocal, Base, engine
 from models import User
 import firebase_admin
 from firebase_admin import credentials, auth
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #Need firebase-service-account.json
 #Don't commit this file
