@@ -13,18 +13,25 @@
 }
 
 .header {
+  position: relative; 
   background: linear-gradient(rgb(37, 35, 35), rgb(81, 77, 77), rgb(37, 35, 35));
   display: flex;
   flex-wrap: wrap;
-  align-items: start;
+  align-items: center; 
   justify-content: center;
   border: solid;
   height: auto;
+
   h1 {
     font-size: 2rem;
     color: white;
     text-align: center;
   }
+}
+
+.nav-menu-wrapper {
+  position: absolute;
+  left: 2%;
 }
 
 .footer {

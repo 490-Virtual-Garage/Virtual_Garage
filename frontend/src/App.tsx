@@ -7,6 +7,7 @@ import History from './pages/History'
 import Scan from './pages/Scan'
 import Vehicles from './pages/Vehicles'
 import PrivateRoute from './components/PrivateRoute'
+import Account from './pages/Account'
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
             {/* Protected routes when authenticated */}
             <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/account" element={<Account />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/scan" element={<Scan />} />
                 <Route path="/vehicles" element={<Vehicles />} />

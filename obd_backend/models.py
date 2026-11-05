@@ -7,6 +7,8 @@ class User(Base):
     userid = Column(String, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=True)
     email = Column(String, unique=True, nullable=False, index=True)
+    
+    #Column for if a user is banned, suspended, etc. Used to whitelist certain users
     is_active = Column(Boolean, default=True, nullable=False)
 
 class Vehicle(Base):
