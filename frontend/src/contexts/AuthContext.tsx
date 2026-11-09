@@ -6,6 +6,7 @@ import {
     setPersistence,
     browserSessionPersistence,
     getIdToken,
+    deleteUser,
     type User,
     type UserCredential
 } from 'firebase/auth'
@@ -16,6 +17,7 @@ type AuthContextType = {
   loading: boolean
   register: (email: string, password: string) => Promise<UserCredential>
   login: (email: string, password: string) => Promise<UserCredential>
+  deleteAccount: () => Promise<void>
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined)
@@ -30,6 +32,7 @@ export function useAuth() {
     return context
 }
 
+//Add user to backend database after registration
 async function syncUser(user: User) {
     const token = await getIdToken(user)
     const res = await fetch(`http://localhost:8001/users`, {
@@ -37,6 +40,16 @@ async function syncUser(user: User) {
         headers: { Authorization: `Bearer ${token}` },
     })
     if (!res.ok) throw new Error(`User sync failed: ${res.status}`)
+}
+
+//Delete user from backend database when account is deleted
+async function requestDeleteUser(user: User) {
+    const token = await getIdToken(user)
+    const res = await fetch(`http://localhost:8001/users`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new Error(`User delete failed: ${res.status}`)
 }
 
 type AuthProviderProps = {
@@ -67,6 +80,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return signInWithEmailAndPassword(auth, email, password)
     }
 
+    //Delete firebase and db user
+    async function deleteAccount() {
+        if (!currentUser) {
+            throw new Error('No user is currently logged in.')
+        }
+
+        await requestDeleteUser(currentUser)
+        await deleteUser(currentUser)
+    }
+
     //Checks current user status
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, user => {
@@ -81,7 +104,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         currentUser,
         loading,
         register,
-        login
+        login,
+        deleteAccount
     }
 
     return (

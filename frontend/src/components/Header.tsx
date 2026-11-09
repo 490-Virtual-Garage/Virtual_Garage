@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import NavMenu from '../components/NavMenu'
 
 function Header() {
-    const { currentUser, loading } = useAuth()
+    const { currentUser } = useAuth()
 
     const homePath = currentUser ? '/dashboard' : '/'
 
@@ -13,6 +14,11 @@ function Header() {
                 Virtual Garage
             </Link>
           </h1>
+          {currentUser && (
+            <div className="nav-menu-wrapper">
+              <NavMenu />
+            </div>
+          )}
         </header>
     )
 }
