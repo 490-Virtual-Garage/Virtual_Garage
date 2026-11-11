@@ -1,19 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException
-<<<<<<< HEAD
 from fastapi.middleware.cors import CORSMiddleware
-=======
->>>>>>> origin/backend
 from pydantic import BaseModel
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine
 from models import User
-<<<<<<< HEAD
 from rule_engine.graph import diagnose, load_graph
-=======
 import firebase_admin
 from firebase_admin import credentials, auth
->>>>>>> origin/backend
 
 app = FastAPI()
 
@@ -87,11 +81,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
-<<<<<<< HEAD
-
-# Expects a JSON body with "username" and "email" fields
-=======
->>>>>>> origin/backend
 @app.post("/users")
 def create_user(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     firebase_uid = user["uid"]
@@ -119,12 +108,6 @@ def create_user(user: dict = Depends(get_current_user), db: Session = Depends(ge
     return {
         "message": "User created successfully",
         "userid": new_user.userid,
-<<<<<<< HEAD
-        "username": new_user.username,
-        "email": new_user.email,
-        "is_active": new_user.is_active,
-    }
-=======
     }
 
 #@app.get("/users/{user_id}")
@@ -140,4 +123,3 @@ def create_user(user: dict = Depends(get_current_user), db: Session = Depends(ge
 #@app.get("/captures/{capture_id}")
 #@app.patch("/captures/{capture_id}")
 #@app.delete("/captures/{capture_id}")
->>>>>>> origin/backend
