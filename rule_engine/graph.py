@@ -162,22 +162,28 @@ def check_rule(rule, moments, conditions):
 def add_test_dtc(captured_data, graph):
     """Add a test DTC to the captured data for testing purposes, this is for testing only (p0171 for now)"""
     stored = captured_data["dtcs"]["stored"]
-    existing_codes = [entry[0] for entry in stored]  # codes already in the capture
+    existing_codes = [dtc_code(entry) for entry in stored]  # codes already in the capture
 
     for node_id, node in (
         graph["nodes"].items()
     ):  # append dtc to the capture session's stored list if its not already there
         if node["type"] == "dtc" and node_id not in existing_codes:
-            stored.append([node_id, node["description"]])
+            stored.append({"code": node_id, "description": node["description"]})
 
+def dtc_code(entry):
+    """Helper function to get the DTC code, for both lists (tests) and dicts (real captures)"""
+    if isinstance(entry, dict):   # real captures: {"code": "P0171", ...}
+        return entry["code"]
+    return entry[0]       
 
 def diagnose(graph, captured_data):
     """Diagnose possible causes based on OBD data against the inference engine rules and causes."""
     new_list = captured_data["dtcs"]["stored"] + captured_data["dtcs"]["pending"]
     codes = []
     for entry in new_list:
-        if entry[0] not in codes:
-            codes.append(entry[0])
+        code = dtc_code(entry)
+        if code not in codes:
+            codes.append(code)
 
     if len(codes) == 0:
         return {
