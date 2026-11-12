@@ -8,9 +8,8 @@ venv/
 !.env.example
 *.pem
 .DS_Store
-data/
+firebase-service-account*.json
 data/
 .env
 .venv/
 __pycache__/
-firebase-service-account.json

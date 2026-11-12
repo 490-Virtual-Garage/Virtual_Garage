@@ -1,42 +1,36 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import '../firebase';
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import Card from '../components/Card';
+
+import { useAuth } from '../contexts/AuthContext'
+import Footer from '../components/Footer'
+import Header from '../components/Header'
+import Card from '../components/Card'
 
 function Register() {
-  //Initialize nav and useStates
   const navigate = useNavigate()
+  const { register } = useAuth()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-  function handleRegister() {
+  async function handleRegister() {
     setError('')
-    
-    //Assign Auth object
-    const auth = getAuth();
 
-    //Create user function
-    createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        //Signed up
-        const user = userCredential.user;
-        console.log('created:', user.uid)
+    try {
+      const { user } = await register(email, password)
 
-        //Move to dashboard after proper signup
-        navigate('/dashboard')
-      })
+      console.log('created:', user.uid)
 
-      //Errors
-      .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        console.error(errorCode, errorMessage)
-        setError(errorMessage)
-      });
+      navigate('/dashboard')
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(error.message)
+        setError(error.message)
+      } else {
+        setError('An unexpected error occurred.')
+      }
+    }
   }
 
   return (
@@ -49,8 +43,9 @@ function Register() {
             <h1>Sign Up</h1>
             <h2>Create your account</h2>
           </div>
+
           <form
-            onSubmit={(e) => {
+            onSubmit={e => {
               e.preventDefault()
               handleRegister()
             }}
@@ -62,7 +57,7 @@ function Register() {
               name="email"
               placeholder="Enter Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               autoComplete="email"
               required
             />
@@ -73,16 +68,30 @@ function Register() {
               name="password"
               placeholder="Enter Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               autoComplete="new-password"
               required
             />
 
             {error && <p className="text-red-500">{error}</p>}
-            
-            <button className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer" type="submit">Create Account</button>
+
+            <button
+              className="flex justify-center self-center w-fit bg-gray-900 px-6 py-2 hover:bg-gray-600 cursor-pointer"
+              type="submit"
+            >
+              Create Account
+            </button>
           </form>
-          <p>Already have an account? <Link to="/login" className="text-blue-500 hover:underline cursor-pointer">Login</Link></p>
+
+          <p>
+            Already have an account?{' '}
+            <Link
+              to="/login"
+              className="text-blue-500 hover:underline cursor-pointer"
+            >
+              Login
+            </Link>
+          </p>
         </Card>
       </main>
 

@@ -6,9 +6,17 @@ from database import SessionLocal, Base, engine
 from models import User
 import firebase_admin
 from firebase_admin import credentials, auth
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #Need firebase-service-account.json
 #Don't commit this file
@@ -72,9 +80,29 @@ def create_user(user: dict = Depends(get_current_user), db: Session = Depends(ge
         "userid": new_user.userid,
     }
 
+@app.delete("/users")
+def delete_user(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    firebase_uid = user["uid"]
+
+    existing_user = db.query(User).filter(User.userid == firebase_uid).first()
+
+    if not existing_user:
+        return {
+            "message": "User not found",
+            "userid": None
+        }
+
+    db.delete(existing_user)
+    db.commit()
+
+    return {
+        "message": "User deleted successfully",
+        "userid": existing_user.userid,
+    }
+
+
 #@app.get("/users/{user_id}")
 #@app.patch("/users/{user_id}")
-#@app.delete("/users/{user_id}")
 
 #@app.post("/vehicles")
 #@app.get("/vehicles/{vehicle_id}")

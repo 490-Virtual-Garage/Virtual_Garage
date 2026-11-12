@@ -13,18 +13,25 @@
 }
 
 .header {
+  position: relative; 
   background: linear-gradient(rgb(37, 35, 35), rgb(81, 77, 77), rgb(37, 35, 35));
   display: flex;
   flex-wrap: wrap;
-  align-items: start;
+  align-items: center; 
   justify-content: center;
   border: solid;
   height: auto;
+
   h1 {
     font-size: 2rem;
     color: white;
     text-align: center;
   }
+}
+
+.nav-menu-wrapper {
+  position: absolute;
+  left: 2%;
 }
 
 .footer {
@@ -97,8 +104,17 @@
 }
 
 .landing-btn-primary {
-  background: rgba(220, 233, 255, 0.14);
+  background: rgba(220, 233, 255, 0.25);
 }
+
+.landing-btn-secondary {
+  background: rgba(200, 233, 255, 0.14);
+}
+
+.landing-btn-tertiary {
+  background: rgba(47, 50, 55, 0.626);
+}
+
 
 @media (max-width: 560px) {
   .landing-nav { flex-direction: column; width: 100%; }
