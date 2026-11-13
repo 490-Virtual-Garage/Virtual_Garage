@@ -4,8 +4,10 @@ import obd
 import urllib.request
 import urllib.error
 
+
+
 PORT = "COM3"
-API_URL = "http://127.0.0.1:8000/captures"
+API_URL = "http://127.0.0.1:8001/captures"
 DURATION_S = 60
 VEHICLE = "2025 Hyundai Elantra"
 
