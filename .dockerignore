@@ -10,9 +10,6 @@ __pycache__/
 .DS_Store
 frontend/node_modules
 frontend/dist
-venv/
-.DS_Store
-.env
-.venv/
-.git/
 node_modules/
+**/firebase-service-account*.json
+**/.env*

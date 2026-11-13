@@ -29,6 +29,9 @@ services:
       - ./obd_backend/.env.docker
     environment:
       DATABASE_URL: "postgresql+psycopg://virtual_garage:${POSTGRES_PASSWORD}@db:5432/virtual_garage_users_dev"
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+    volumes:
+      - ./obd_backend/firebase-service-account.json:/app/firebase-service-account.json:ro
     depends_on:
       db:
         condition: service_healthy
@@ -67,6 +70,9 @@ services:
     environment:
       ELM_HOST: emulator
       ELM_PORT: "35000"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHFILES_FORCE_POLLING: "true"
+      
     ports:
       - "127.0.0.1:5173:5173"
       - "127.0.0.1:8000:8000"

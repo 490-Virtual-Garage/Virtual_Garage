@@ -5,18 +5,28 @@ import Register from './pages/Register'
 import Login from './pages/Login'
 import History from './pages/History'
 import Scan from './pages/Scan'
+import Vehicles from './pages/Vehicles'
+import PrivateRoute from './components/PrivateRoute'
+import Account from './pages/Account'
 
 function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/signup" element={<Register />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/history" element={<History />} />
-      <Route path="/scan" element={<Scan />} />
-    </Routes>
-  )
+    return (
+        <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/signup" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+
+            {/* Protected routes when authenticated */}
+            <Route element={<PrivateRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/history" element={<History />} />
+                <Route path="/scan" element={<Scan />} />
+                <Route path="/vehicles" element={<Vehicles />} />
+            </Route>
+        </Routes>
+    )
 }
 
 export default App

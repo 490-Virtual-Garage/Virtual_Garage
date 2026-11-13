@@ -12,7 +12,7 @@ function Landing() {
         <p className="landing-tagline">Keep your cars, parts, and projects in one place.</p>
 
         <nav className="landing-nav">
-          <Link to="/signup" className="landing-btn landing-btn-primary">Sign up</Link>
+          <Link to="/signup" className="landing-btn landing-btn-secondary">Sign up</Link>
           <Link to="/login" className="landing-btn">Log in</Link>
         </nav>
       </main>

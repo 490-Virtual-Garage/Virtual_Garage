@@ -9,16 +9,8 @@ from rule_engine.graph import diagnose, load_graph
 import firebase_admin
 from firebase_admin import credentials, auth
 
-app = FastAPI()
 
-origins = ["http://localhost:5173", "http://127.0.0.1:5173"] #frontend urls, 127... is from compose.yml, localhost from vite
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI()
 
 
 Base.metadata.create_all(bind=engine)
@@ -26,6 +18,13 @@ graph = load_graph()
 latest_capture = None
 latest_diagnosis = None
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #Need firebase-service-account.json
 #Don't commit this file
@@ -110,9 +109,29 @@ def create_user(user: dict = Depends(get_current_user), db: Session = Depends(ge
         "userid": new_user.userid,
     }
 
+@app.delete("/users")
+def delete_user(user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    firebase_uid = user["uid"]
+
+    existing_user = db.query(User).filter(User.userid == firebase_uid).first()
+
+    if not existing_user:
+        return {
+            "message": "User not found",
+            "userid": None
+        }
+
+    db.delete(existing_user)
+    db.commit()
+
+    return {
+        "message": "User deleted successfully",
+        "userid": existing_user.userid,
+    }
+
+
 #@app.get("/users/{user_id}")
 #@app.patch("/users/{user_id}")
-#@app.delete("/users/{user_id}")
 
 #@app.post("/vehicles")
 #@app.get("/vehicles/{vehicle_id}")
