@@ -1,18 +1,26 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from database import SessionLocal, Base, engine
 from models import User
+from rule_engine.graph import diagnose, load_graph
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
+
+
 Base.metadata.create_all(bind=engine)
+graph = load_graph()
+latest_capture = None
+latest_diagnosis = None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,12 +40,33 @@ def get_db():
     finally:
         db.close()
 
+
 @app.post("/captures")
 def receive_capture(capture: dict):
+    global latest_capture, latest_diagnosis
     session = capture["session"]
-    readings = capture["readings"]
-    print(f"Got capture {session['session_id']} from {session['vehicle']}: {len(readings)} readings", flush=True)
-    return {"status": "received", "session_id": session["session_id"], "readings": len(readings)}
+    print(
+        f"Got capture {session['session_id']} from {session['vehicle']}: {len(capture['readings'])} readings",
+        flush=True,
+    )
+    latest_capture = capture
+    latest_diagnosis = diagnose(graph, capture)
+    return latest_diagnosis
+
+
+@app.get("/captures/latest")
+def get_latest_capture():
+    if latest_capture is None:
+        raise HTTPException(status_code=404, detail="No capture data available")
+    return latest_capture
+
+
+@app.get("/diagnosis/latest")
+def get_latest_diagnosis():
+    if latest_diagnosis is None:
+        raise HTTPException(status_code=404, detail="No diagnosis data available")
+    return latest_diagnosis
+
 
 #Authenticate token
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
