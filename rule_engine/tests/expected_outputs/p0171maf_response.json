@@ -1,0 +1,65 @@
+{
+  "status": "ok",
+  "dtcs": [
+    "P0171"
+  ],
+  "unknown_dtcs": [],
+  "causes": [
+    {
+      "dtc": "P0171",
+      "cause": "maf_sensor",
+      "name": "Dirty or failing MAF sensor",
+      "repair_tier": "minor",
+      "score": 2.35,
+      "evidence": [
+        {
+          "rule_id": "lean_everywhere",
+          "explanation": "Lean at both idle and higher RPM: the engine is underestimating airflow across the range",
+          "readings": [
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "idle",
+              "average": 15.6
+            },
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "high_rpm",
+              "average": 14.8
+            }
+          ]
+        }
+      ],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "fuel_delivery",
+      "name": "Weak fuel pump or clogged fuel filter",
+      "repair_tier": "moderate",
+      "score": 0.25,
+      "evidence": [],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "vacuum_leak",
+      "name": "Vacuum leak",
+      "repair_tier": "minor",
+      "score": -0.6,
+      "evidence": [
+        {
+          "rule_id": "lean_everywhere_not_vacuum",
+          "explanation": "A vacuum leak usually fades at higher RPM, so staying lean there argues against it",
+          "readings": [
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "high_rpm",
+              "average": 14.8
+            }
+          ]
+        }
+      ],
+      "not_checked": []
+    }
+  ]
+}
