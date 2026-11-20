@@ -1,0 +1,53 @@
+{
+  "status": "ok",
+  "dtcs": [
+    "P0171"
+  ],
+  "unknown_dtcs": [],
+  "causes": [
+    {
+      "dtc": "P0171",
+      "cause": "vacuum_leak",
+      "name": "Vacuum leak",
+      "repair_tier": "minor",
+      "score": 2.4,
+      "evidence": [
+        {
+          "rule_id": "lean_at_idle_only",
+          "explanation": "Lean at idle but fine at higher RPM: extra unmetered air matters most when airflow is low",
+          "readings": [
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "idle",
+              "average": 15.6
+            },
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "high_rpm",
+              "average": 2.3
+            }
+          ]
+        }
+      ],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "maf_sensor",
+      "name": "Dirty or failing MAF sensor",
+      "repair_tier": "minor",
+      "score": 0.35,
+      "evidence": [],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "fuel_delivery",
+      "name": "Weak fuel pump or clogged fuel filter",
+      "repair_tier": "moderate",
+      "score": 0.25,
+      "evidence": [],
+      "not_checked": []
+    }
+  ]
+}
