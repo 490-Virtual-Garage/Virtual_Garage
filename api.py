@@ -7,13 +7,17 @@ published on host port 8000.
 Endpoints:
     GET  /health
     GET  /recalls?make=honda&model=civic&year=2012
+    GET  /vin/{vin}               decode a VIN (NHTSA vPIC)
+    GET  /vin/{vin}/recalls       decode a VIN, then look up its recalls
     POST /captures
 """
 
-from fastapi import FastAPI, Query
+from dataclasses import asdict
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from nhtsa_recalls import LookupStatus, RecallsClient
+from nhtsa_recalls import RecallLookup, RecallsClient, VinLookup, VinStatus
 
 app = FastAPI(title="Virtual Garage API")
 
@@ -40,8 +44,43 @@ def recalls(
     model: str = Query(..., examples=["civic"]),
     year: int = Query(..., ge=1966, le=2030),
 ):
-    result = client.get_recalls(make, model, year)
+    return _recalls_json(client.get_recalls(make, model, year))
 
+
+@app.get("/vin/{vin}")
+def decode_vin(vin: str):
+    decoded = client.decode_vin(vin)
+    _raise_for_vin(decoded)
+    return _vin_json(decoded)
+
+
+@app.get("/vin/{vin}/recalls")
+def recalls_by_vin(vin: str):
+    decoded, recalls = client.get_recalls_by_vin(vin)
+    _raise_for_vin(decoded)
+    return {
+        "vin": _vin_json(decoded),
+        "recalls": _recalls_json(recalls) if recalls else None,
+    }
+
+
+def _raise_for_vin(decoded: VinLookup) -> None:
+    if decoded.status is VinStatus.INVALID:
+        raise HTTPException(status_code=422, detail=decoded.message or "Invalid VIN.")
+    if decoded.status is VinStatus.ERROR:
+        raise HTTPException(status_code=502, detail=f"NHTSA vPIC unavailable: {decoded.message}")
+
+
+def _vin_json(decoded: VinLookup) -> dict:
+    return {
+        "status": decoded.status.value,
+        "message": decoded.message,
+        "error_codes": decoded.error_codes,
+        "vehicle": asdict(decoded.vehicle) if decoded.vehicle else None,
+    }
+
+
+def _recalls_json(result: RecallLookup) -> dict:
     return {
         "status": result.status.value,
         "message": result.message,
