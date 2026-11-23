@@ -5,6 +5,7 @@ env/
 venv/
 .env
 .env.*
+*.env
 !.env.example
 *.pem
 .DS_Store
