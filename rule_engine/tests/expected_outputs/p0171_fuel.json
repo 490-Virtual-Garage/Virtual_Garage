@@ -1,0 +1,53 @@
+{
+  "status": "ok",
+  "dtcs": [
+    "P0171"
+  ],
+  "unknown_dtcs": [],
+  "causes": [
+    {
+      "dtc": "P0171",
+      "cause": "fuel_delivery",
+      "name": "Weak fuel pump or clogged fuel filter",
+      "repair_tier": "moderate",
+      "score": 2.25,
+      "evidence": [
+        {
+          "rule_id": "lean_under_load",
+          "explanation": "Fine at idle but lean under heavy load: fuel supply can't keep up with demand",
+          "readings": [
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "idle",
+              "average": 2.3
+            },
+            {
+              "pid": "LONG_FUEL_TRIM_1",
+              "during": "high_load",
+              "average": 15.6
+            }
+          ]
+        }
+      ],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "vacuum_leak",
+      "name": "Vacuum leak",
+      "repair_tier": "minor",
+      "score": 0.4,
+      "evidence": [],
+      "not_checked": []
+    },
+    {
+      "dtc": "P0171",
+      "cause": "maf_sensor",
+      "name": "Dirty or failing MAF sensor",
+      "repair_tier": "minor",
+      "score": 0.35,
+      "evidence": [],
+      "not_checked": []
+    }
+  ]
+}

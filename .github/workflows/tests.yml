@@ -1,0 +1,35 @@
+name: Knowledge Base Tests
+
+on:
+  push:
+    branches:
+      - main
+      - backend
+    paths:
+      - "rule_engine/**"
+      - ".github/workflows/tests.yml"
+  pull_request:
+    branches:
+      - main
+      - backend
+    paths:
+      - "rule_engine/**"
+      - ".github/workflows/tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install pytest
+
+      - name: Run tests
+        run: python -m pytest rule_engine -v
