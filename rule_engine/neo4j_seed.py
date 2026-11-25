@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
-from neo4j_client import get_driver, NEO4J_DATABASE
+from rule_engine.neo4j_client import get_driver, NEO4J_DATABASE
 
-KB_PATH = Path(__file__).resolve().parent.parent / "rule_engine" / "dtc_pid.json"
+KB_PATH = Path(__file__).resolve().parent / "dtc_pid.json"
 
 CONSTRAINTS = [
     "CREATE CONSTRAINT dtc_id IF NOT EXISTS FOR (n:DTC) REQUIRE n.id IS UNIQUE",
