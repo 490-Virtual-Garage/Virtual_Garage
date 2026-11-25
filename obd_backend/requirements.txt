@@ -4,3 +4,5 @@ sqlalchemy
 psycopg[binary]
 python-dotenv
 firebase-admin
+neo4j==6.4.1
+python-dotenv==1.2.4
