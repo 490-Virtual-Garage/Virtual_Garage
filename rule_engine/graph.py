@@ -1,18 +1,154 @@
 import json
 from datetime import datetime
 from pathlib import Path
+from rule_engine.neo4j_client import get_driver, NEO4J_DATABASE #full package path, so it works from pytest, Docker and python -m.
 
-HERE = Path(__file__).parent   # the folder graph.py lives in (rule_engine/)
+HERE = Path(__file__).parent  # the folder graph.py lives in (rule_engine/)
 
 
-def load_graph(path=HERE / "dtc_pid.json"): #so fastAPI can call load_graph() without providing the path
+def read_kb_neo4j(driver):
+    #conditions, nodes, edges, rules
+    #build nodes dict from neo4j graph
+    records = driver.execute_query(
+        """
+       MATCH (n) WHERE n:DTC OR n:Cause
+       RETURN n.id AS id, 
+       n.description as description,
+       labels(n) AS label, 
+       n.name as name,
+       n.repair_tier as repair
+        """,
+        database_=NEO4J_DATABASE,
+    ).records
+    nodes = {}
+    for row in records:
+        if("Cause" in row["label"]):
+            nodes[row["id"]] = {
+                "type": "cause",
+                "name": row["name"],
+                "repair_tier": row["repair"],
+            }
+        elif("DTC" in row["label"]):
+            nodes[row["id"]] = {
+                "type" : "dtc",
+                "description" : row["description"]
+            }
+
+
+    #build edge list from neo4j graph
+#     "edges": [
+#     {"from": "vacuum_leak",   "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.4},
+#     {"from": "maf_sensor",    "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.35},
+#     {"from": "fuel_delivery", "rel": "CAN_CAUSE", "to": "P0171", "prior": 0.25}
+#   ],
+    
+    #this is ordered, since order matters in lists, and edge is a list of dicts
+    records = driver.execute_query(
+        """
+        MATCH (d: DTC )-[cause:CAUSED_BY]->(c:Cause)
+        RETURN d.id as d_id,
+        c.id as c_id,
+        cause.prior as prior
+        ORDER BY d_id, prior DESC, c_id 
+        """,
+        database_= NEO4J_DATABASE,
+    ).records
+
+    edges = []
+    for row in records:
+        edges.append(
+            {
+            "from" : row["c_id"],
+            "rel" : "CAN_CAUSE",
+            "to" : row["d_id"],
+            "prior" : row["prior"]
+            }
+        )
+    
+
+    #build conditions
+#     "conditions": {
+#     "idle":      {"pid": "RPM",         "check": "below", "value": 1000},
+#     "high_rpm":  {"pid": "RPM",         "check": "above", "value": 2000},
+#     "high_load": {"pid": "ENGINE_LOAD", "check": "above", "value": 60}
+#   },
+
+    records = driver.execute_query(
+        """
+        MATCH (c:Condition)
+        RETURN c.pid AS pid,
+        c.id AS id,
+        c.check AS check,
+        c.value AS value
+        """,
+        database_=NEO4J_DATABASE
+    ).records
+    conditions = {}
+    for row in records:
+        conditions[row["id"]] = {
+            "pid": row["pid"],
+            "check": row["check"],
+            "value": row["value"]
+        }
+
+    
+
+    records = driver.execute_query(
+        """
+        MATCH (r:Rule)-[e:SUPPORTS|REFUTES]->(c:Cause)
+        MATCH (r)-[:HAS_CLAUSE]->(cl:Clause)-[:DURING]->(cond:Condition)
+        RETURN r.id AS rule_id,
+               r.explain AS explain,
+               toLower(type(e)) AS effect,
+               e.weight AS weight,
+               c.id AS cause,
+               cl.pid AS pid,
+               cond.id AS during,
+               cl.check AS check,
+               cl.value AS value
+        ORDER BY rule_id, cl.order
+        """,
+        database_=NEO4J_DATABASE,
+    ).records
+
+    rules = {}
+    for row in records:
+        rule_id = row["rule_id"]
+        if rule_id not in rules:  # first clause of this rule → build the skeleton
+            rules[rule_id] = {
+                "id": rule_id,
+                "explain": row["explain"],
+                "if": [],
+                "then": {
+                    "cause": row["cause"],
+                    "effect": row["effect"],
+                    "weight": row["weight"],
+                },
+            }
+        rules[rule_id]["if"].append(  # every row adds one clause
+            {
+                "pid": row["pid"],
+                "during": row["during"],
+                "check": row["check"],
+                "value": row["value"],
+            }
+        )
+    rules = list(rules.values())  # JSON stores rules as a list
+    return {"conditions": conditions, "nodes": nodes, "edges": edges, "rules": rules}
+    
+    
+
+
+
+# due to Neo4j migration this is redundant, will be taken out once pytests are changed
+# old version of this for pytest sake: def load_graph(path=HERE / "dtc_pid.json"):
+def load_graph():
     """Load the diagnostic knowledge file and build the graph's lookup tables."""
-    with open(path, "r", encoding="utf-8") as file:
-        data = json.load(file)
-
     # DTC -> list of cause IDs that can produce it
     # as of right now this only supports one specific DTC with its set of possible causes
     # DTC P0171, “System Too Lean, Bank 1" in the future more DTC will be added to the json file and this will support them as well
+    with get_driver() as driver:
+        data = read_kb_neo4j(driver)
     causes_of = {}
     for edge in data["edges"]:
         dtc = edge["to"]
@@ -162,7 +298,9 @@ def check_rule(rule, moments, conditions):
 def add_test_dtc(captured_data, graph):
     """Add a test DTC to the captured data for testing purposes, this is for testing only (p0171 for now)"""
     stored = captured_data["dtcs"]["stored"]
-    existing_codes = [dtc_code(entry) for entry in stored]  # codes already in the capture
+    existing_codes = [
+        dtc_code(entry) for entry in stored
+    ]  # codes already in the capture
 
     for node_id, node in (
         graph["nodes"].items()
@@ -170,11 +308,13 @@ def add_test_dtc(captured_data, graph):
         if node["type"] == "dtc" and node_id not in existing_codes:
             stored.append({"code": node_id, "description": node["description"]})
 
+
 def dtc_code(entry):
     """Helper function to get the DTC code, for both lists (tests) and dicts (real captures)"""
-    if isinstance(entry, dict):   # real captures: {"code": "P0171", ...}
+    if isinstance(entry, dict):  # real captures: {"code": "P0171", ...}
         return entry["code"]
-    return entry[0]       
+    return entry[0]
+
 
 def diagnose(graph, captured_data):
     """Diagnose possible causes based on OBD data against the inference engine rules and causes."""
@@ -210,32 +350,47 @@ def diagnose(graph, captured_data):
                         score += rule["then"]["weight"]
                     else:
                         score -= rule["then"]["weight"]
-                    evidence.append({"rule_id": rule["id"], "explanation": rule["explain"], "readings": rule_evidence})
+                    evidence.append(
+                        {
+                            "rule_id": rule["id"],
+                            "explanation": rule["explain"],
+                            "readings": rule_evidence,
+                        }
+                    )
                 elif status == "unknown":
                     not_checked.append(rule["id"])
             node = graph["nodes"][cause]
-            results.append({
-                "dtc": code,
-                "cause": cause,
-                "name": node["name"],
-                "repair_tier": node["repair_tier"],
-                "score": round(score, 2),
-                "evidence": evidence,
-                "not_checked": not_checked,
-            })
+            results.append(
+                {
+                    "dtc": code,
+                    "cause": cause,
+                    "name": node["name"],
+                    "repair_tier": node["repair_tier"],
+                    "score": round(score, 2),
+                    "evidence": evidence,
+                    "not_checked": not_checked,
+                }
+            )
     results.sort(key=lambda r: r["score"], reverse=True)
-    return {"status": "ok", "dtcs": codes, "unknown_dtcs": unknown_dtcs, "causes": results}
+    return {
+        "status": "ok",
+        "dtcs": codes,
+        "unknown_dtcs": unknown_dtcs,
+        "causes": results,
+    }
 
-           
+
 if __name__ == "__main__":
-    graph = load_graph()
+    graph = load_graph() 
     with open(HERE / "samplecapture.json", "r", encoding="utf-8") as file:
         captured_data = json.load(file)
-    # for dtc, causes in graph["causes_of"].items():
-    # print(f"{dtc} can be caused by: {causes}")
+    for dtc, causes in graph["causes_of"].items():
+        print(f"{dtc} can be caused by: {causes}")
 
-    # for cause, rules in graph["rules_for"].items():
-    # print(f"{cause} rules: {[r['id'] for r in rules]}")
+    for cause, rules in graph["rules_for"].items():
+        print(f"{cause} rules: {[r['id'] for r in rules]}")
 
     add_test_dtc(captured_data, graph)
     print(json.dumps(diagnose(graph, captured_data), indent=2))
+    with get_driver() as driver:
+        read_kb_neo4j(driver)
