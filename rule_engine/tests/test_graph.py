@@ -2,7 +2,7 @@ from rule_engine.graph import diagnose, load_graph
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture(scope="module") #test file reads graph once from neo4j, to avoid time bloat in testing
 def graph():
     return load_graph()
 
